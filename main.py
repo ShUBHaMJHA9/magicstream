@@ -3,6 +3,10 @@ import subprocess
 import yt_dlp
 import threading
 import time
+from flask import Flask, jsonify
+
+# Initialize Flask app
+app = Flask(__name__)
 
 # Base directory for handling file paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -91,6 +95,11 @@ def start_streaming(stream_info):
         # Short delay between loops
         time.sleep(1)
 
+# Define a simple route for the web server
+@app.route('/')
+def home():
+    return jsonify({"message": "Streaming is running!"})
+
 # Entry point
 def main():
     # Load streaming information
@@ -115,7 +124,10 @@ def main():
         threads.append(thread)
         thread.start()
 
-    # Wait for threads to finish
+    # Start the Flask web server on port 2487
+    app.run(host='0.0.0.0', port=2487)
+
+    # Wait for threads to finish (in case we need more processing logic)
     for thread in threads:
         thread.join()
 
