@@ -8,6 +8,9 @@ from flask import Flask, jsonify
 # Initialize Flask app
 app = Flask(__name__)
 
+# Global flag to control streaming
+streaming_active = False
+
 # Base directory for handling file paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -65,6 +68,7 @@ def stream_audio(audio_url, looping_video_path, output_url):
 
 # Streaming logic
 def start_streaming(stream_info):
+    global streaming_active
     # Paths to audio file and looping video
     audio_file = os.path.join(BASE_DIR, stream_info['audio_url_file'])
     looping_video = os.path.join(BASE_DIR, stream_info['looping_video_path'])
@@ -83,9 +87,12 @@ def start_streaming(stream_info):
     # Output streaming URL
     output_url = 'rtmp://a.rtmp.youtube.com/live2/' + stream_info['stream_key']
 
-    # Loop through audio URLs and stream them
-    while True:
+    # Loop through audio URLs and stream them if streaming is active
+    while streaming_active:
         for audio_url in audio_urls:
+            if not streaming_active:
+                print("Stopping the stream.")
+                break
             extracted_audio_url = extract_audio_from_url(audio_url)
             if extracted_audio_url is not None:
                 stream_audio(extracted_audio_url, looping_video, output_url)
@@ -95,6 +102,31 @@ def start_streaming(stream_info):
         # Short delay between loops
         time.sleep(1)
 
+# Define Flask routes for controlling the streaming
+@app.route('/start', methods=['POST'])
+def start_stream():
+    global streaming_active
+    if not streaming_active:
+        streaming_active = True
+        print("Starting the stream...")
+        
+        # Start streaming in a separate thread
+        threading.Thread(target=start_streaming, args=(streaming_info[0],)).start()
+
+        return jsonify({"message": "Streaming started!"}), 200
+    else:
+        return jsonify({"message": "Streaming is already running."}), 400
+
+@app.route('/stop', methods=['POST'])
+def stop_stream():
+    global streaming_active
+    if streaming_active:
+        streaming_active = False
+        print("Stopping the stream...")
+        return jsonify({"message": "Streaming stopped!"}), 200
+    else:
+        return jsonify({"message": "Streaming is not running."}), 400
+
 # Define a simple route for the web server
 @app.route('/')
 def home():
@@ -103,6 +135,7 @@ def home():
 # Entry point
 def main():
     # Load streaming information
+    global streaming_info
     streaming_info = [
         {
             'stream_key': os.getenv('STREAM_KEY'),  # Set your stream key as an environment variable
@@ -117,19 +150,8 @@ def main():
             print("Error: Missing STREAM_KEY environment variable.")
             return
 
-    # Start threads for streaming
-    threads = []
-    for info in streaming_info:
-        thread = threading.Thread(target=start_streaming, args=(info,))
-        threads.append(thread)
-        thread.start()
-
     # Start the Flask web server on port 2487
     app.run(host='0.0.0.0', port=2487)
-
-    # Wait for threads to finish (in case we need more processing logic)
-    for thread in threads:
-        thread.join()
 
 # Run the script
 if __name__ == "__main__":
