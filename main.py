@@ -51,16 +51,20 @@ def extract_audio_from_url(youtube_url):
 def stream_audio(audio_url, looping_video_path, output_url):
     try:
         ffmpeg_command = [
-            'ffmpeg',
-            '-loglevel', 'info', '-re',
-            '-stream_loop', '-1', '-i', looping_video_path,  # Loop the video infinitely
-            '-i', audio_url,
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-b:v', '200k', '-maxrate', '200k', '-bufsize', '400k',
-            '-r', '15', '-s', '640x360', '-vf', 'format=yuv420p', '-g', '30', '-shortest',
-            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',  # Audio conversion to AAC
-            '-map', '0:v', '-map', '1:a',
-            '-f', 'flv', output_url
-        ]
+    'ffmpeg',
+    '-loglevel', 'info', '-re',  # Real-time processing
+    '-stream_loop', '-1', '-i', looping_video_path,  # Loop the video infinitely
+    '-i', audio_url,
+    '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',  # Faster encoding
+    '-b:v', '150k', '-maxrate', '150k', '-bufsize', '300k',  # Lower video bitrate
+    '-r', '15', '-s', '426x240', '-vf', 'format=yuv420p',  # Lower resolution
+    '-g', '30',  # Keyframe interval
+    '-shortest',  # Stop if the shortest input ends
+    '-c:a', 'aac', '-b:a', '96k', '-ar', '44100',  # Lower audio bitrate
+    '-map', '0:v', '-map', '1:a',  # Map video and audio streams
+    '-f', 'flv', output_url
+            ]
+
         subprocess.run(ffmpeg_command, check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error streaming audio: {e}")
