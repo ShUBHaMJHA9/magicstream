@@ -13,7 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Default streaming information
 STREAMING_INFO = {
-    'stream_key': os.getenv('STREAM_KEY', ''),  # Set your stream key as an environment variable
+    'stream_key': 'q2d6-9xch-u8t0-8bjp-74mp'  # Set your stream key as an environment variable
     'looping_video_path': 'vid.mp4',  # Path to looping video
     'audio_url_file': 'audio.txt'  # Path to audio URLs file
 }
@@ -107,6 +107,7 @@ def start_streaming():
             extracted_audio_url = extract_audio_from_url(audio_url)
             if extracted_audio_url:
                 print(f"Streaming from: {audio_url}")
+                print(f"At ur : {output_url}")
                 stream_audio(extracted_audio_url, looping_video, output_url)
             else:
                 print(f"Error: Unable to extract audio from {audio_url}")
