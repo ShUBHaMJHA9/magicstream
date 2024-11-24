@@ -13,7 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Default streaming information
 STREAMING_INFO = {
-    'stream_key': 'q2d6-9xch-u8t0-8bjp-74mp'  # Set your stream key as an environment variable
+    'stream_key': 'q2d6-9xch-u8t0-8bjp-74mp',  # Set your stream key as an environment variable
     'looping_video_path': 'vid.mp4',  # Path to looping video
     'audio_url_file': 'audio.txt'  # Path to audio URLs file
 }
