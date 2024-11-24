@@ -40,7 +40,7 @@ def extract_audio_from_url(youtube_url):
         'quiet': True,
         'no_warnings': True,
         'skip_download': True,
-        'cookiefile': os.path.join(BASE_DIR, 'cookies.txt')  # Include cookies if needed
+        'cookiefile': 'cookies.txt' # Include cookies if needed
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
