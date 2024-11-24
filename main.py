@@ -13,14 +13,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Default streaming information
 STREAMING_INFO = {
-    'stream_key': 'q2d6-9xch-u8t0-8bjp-74mp',  # Set your stream key as an environment variable
+    'stream_key': os.getenv('STREAM_KEY', 'q2d6-9xch-u8t0-8bjp-74mp'),  # Use environment variable or default value
     'looping_video_path': 'vid.mp4',  # Path to looping video
     'audio_url_file': 'audio.txt'  # Path to audio URLs file
 }
 
 # Global flag to control streaming
 streaming_active = True
-
 
 # Function to extract audio URLs from a file
 def extract_audio_from_file(file_path):
@@ -32,24 +31,21 @@ def extract_audio_from_file(file_path):
         print(f"Error reading audio URLs from file: {e}")
         return []
 
-
 # Function to extract audio stream URL from a YouTube link
 def extract_audio_from_url(youtube_url):
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
         'no_warnings': True,
-        'skip_download': True,
-        'cookiefile': 'cookies.txt' # Include cookies if needed
+        'cookiefile': 'cookies.txt'  # Include cookies if needed
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        try:
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(youtube_url, download=False)
             return info_dict.get('url', None)
-        except yt_dlp.utils.DownloadError as e:
-            print(f"Error extracting audio from {youtube_url}: {e}")
-            return None
-
+    except yt_dlp.utils.DownloadError as e:
+        print(f"Error extracting audio from {youtube_url}: {e}")
+        return None
 
 # Function to stream audio with FFmpeg
 def stream_audio(audio_url, looping_video_path, output_url):
@@ -71,7 +67,6 @@ def stream_audio(audio_url, looping_video_path, output_url):
     except Exception as e:
         print(f"Unexpected error streaming audio: {e}")
 
-
 # Streaming logic
 def start_streaming():
     global streaming_active
@@ -81,8 +76,11 @@ def start_streaming():
     looping_video = os.path.join(BASE_DIR, STREAMING_INFO['looping_video_path'])
 
     # Validate paths
-    if not os.path.exists(audio_file) or not os.path.exists(looping_video):
-        print("Error: Missing required files.")
+    if not os.path.exists(audio_file):
+        print(f"Error: Audio file not found at {audio_file}.")
+        return
+    if not os.path.exists(looping_video):
+        print(f"Error: Looping video not found at {looping_video}.")
         return
 
     # Extract audio URLs
@@ -92,7 +90,7 @@ def start_streaming():
         return
 
     # Output streaming URL
-    output_url = 'rtmp://a.rtmp.youtube.com/live2/' + STREAMING_INFO['stream_key']
+    output_url = f"rtmp://a.rtmp.youtube.com/live2/{STREAMING_INFO['stream_key']}"
 
     if not STREAMING_INFO['stream_key']:
         print("Error: Missing STREAM_KEY environment variable.")
@@ -107,12 +105,11 @@ def start_streaming():
             extracted_audio_url = extract_audio_from_url(audio_url)
             if extracted_audio_url:
                 print(f"Streaming from: {audio_url}")
-                print(f"At ur : {output_url}")
+                print(f"Output URL: {output_url}")
                 stream_audio(extracted_audio_url, looping_video, output_url)
             else:
                 print(f"Error: Unable to extract audio from {audio_url}")
         time.sleep(1)  # Short delay between loops
-
 
 # Define Flask routes for control
 @app.route('/stop', methods=['POST'])
@@ -125,11 +122,9 @@ def stop_stream():
     else:
         return jsonify({"message": "Streaming is not running."}), 400
 
-
 @app.route('/')
 def home():
     return jsonify({"message": "Streaming is running!"})
-
 
 # Entry point
 def main():
@@ -138,7 +133,6 @@ def main():
 
     # Start the Flask web server on port 5000 or dynamically assigned port
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-
 
 if __name__ == "__main__":
     main()
