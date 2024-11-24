@@ -8,11 +8,19 @@ from flask import Flask, jsonify
 # Initialize Flask app
 app = Flask(__name__)
 
-# Global flag to control streaming
-streaming_active = False
-
 # Base directory for handling file paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Default streaming information
+STREAMING_INFO = {
+    'stream_key': os.getenv('STREAM_KEY', ''),  # Set your stream key as an environment variable
+    'looping_video_path': 'vid.mp4',  # Path to looping video
+    'audio_url_file': 'audio.txt'  # Path to audio URLs file
+}
+
+# Global flag to control streaming
+streaming_active = True
+
 
 # Function to extract audio URLs from a file
 def extract_audio_from_file(file_path):
@@ -23,6 +31,7 @@ def extract_audio_from_file(file_path):
     except Exception as e:
         print(f"Error reading audio URLs from file: {e}")
         return []
+
 
 # Function to extract audio stream URL from a YouTube link
 def extract_audio_from_url(youtube_url):
@@ -36,15 +45,11 @@ def extract_audio_from_url(youtube_url):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
             info_dict = ydl.extract_info(youtube_url, download=False)
-            audio_url = info_dict.get('url', None)
-            if audio_url:
-                return audio_url
-            else:
-                print(f"No audio stream available for {youtube_url}")
-                return None
+            return info_dict.get('url', None)
         except yt_dlp.utils.DownloadError as e:
             print(f"Error extracting audio from {youtube_url}: {e}")
             return None
+
 
 # Function to stream audio with FFmpeg
 def stream_audio(audio_url, looping_video_path, output_url):
@@ -66,12 +71,14 @@ def stream_audio(audio_url, looping_video_path, output_url):
     except Exception as e:
         print(f"Unexpected error streaming audio: {e}")
 
+
 # Streaming logic
-def start_streaming(stream_info):
+def start_streaming():
     global streaming_active
+
     # Paths to audio file and looping video
-    audio_file = os.path.join(BASE_DIR, stream_info['audio_url_file'])
-    looping_video = os.path.join(BASE_DIR, stream_info['looping_video_path'])
+    audio_file = os.path.join(BASE_DIR, STREAMING_INFO['audio_url_file'])
+    looping_video = os.path.join(BASE_DIR, STREAMING_INFO['looping_video_path'])
 
     # Validate paths
     if not os.path.exists(audio_file) or not os.path.exists(looping_video):
@@ -85,38 +92,28 @@ def start_streaming(stream_info):
         return
 
     # Output streaming URL
-    output_url = 'rtmp://a.rtmp.youtube.com/live2/' + stream_info['stream_key']
+    output_url = 'rtmp://a.rtmp.youtube.com/live2/' + STREAMING_INFO['stream_key']
 
-    # Loop through audio URLs and stream them if streaming is active
+    if not STREAMING_INFO['stream_key']:
+        print("Error: Missing STREAM_KEY environment variable.")
+        return
+
+    # Loop through audio URLs and stream them
     while streaming_active:
         for audio_url in audio_urls:
             if not streaming_active:
                 print("Stopping the stream.")
                 break
             extracted_audio_url = extract_audio_from_url(audio_url)
-            if extracted_audio_url is not None:
+            if extracted_audio_url:
+                print(f"Streaming from: {audio_url}")
                 stream_audio(extracted_audio_url, looping_video, output_url)
             else:
                 print(f"Error: Unable to extract audio from {audio_url}")
+        time.sleep(1)  # Short delay between loops
 
-        # Short delay between loops
-        time.sleep(1)
 
-# Define Flask routes for controlling the streaming
-@app.route('/start', methods=['POST'])
-def start_stream():
-    global streaming_active
-    if not streaming_active:
-        streaming_active = True
-        print("Starting the stream...")
-        
-        # Start streaming in a separate thread
-        threading.Thread(target=start_streaming, args=(streaming_info[0],)).start()
-
-        return jsonify({"message": "Streaming started!"}), 200
-    else:
-        return jsonify({"message": "Streaming is already running."}), 400
-
+# Define Flask routes for control
 @app.route('/stop', methods=['POST'])
 def stop_stream():
     global streaming_active
@@ -127,32 +124,20 @@ def stop_stream():
     else:
         return jsonify({"message": "Streaming is not running."}), 400
 
-# Define a simple route for the web server
+
 @app.route('/')
 def home():
     return jsonify({"message": "Streaming is running!"})
 
+
 # Entry point
 def main():
-    # Load streaming information
-    global streaming_info
-    streaming_info = [
-        {
-            'stream_key': os.getenv('STREAM_KEY'),  # Set your stream key as an environment variable
-            'looping_video_path': 'vid.mp4',  # Path to looping video
-            'audio_url_file': 'audio.txt'  # Path to audio URLs file
-        }
-    ]
+    # Start streaming in a separate thread
+    threading.Thread(target=start_streaming, daemon=True).start()
 
-    # Validate environment variables
-    for info in streaming_info:
-        if not info['stream_key']:
-            print("Error: Missing STREAM_KEY environment variable.")
-            return
+    # Start the Flask web server on port 5000 or dynamically assigned port
+    app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
 
-    # Start the Flask web server on port 2487
-    app.run(host='0.0.0.0', port=2487)
 
-# Run the script
 if __name__ == "__main__":
     main()
