@@ -2,4 +2,4 @@ yt-dlp
 python-ffmpeg
 flask
 fastapi
-unicorn
+uvicorn
