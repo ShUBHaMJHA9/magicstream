@@ -3,10 +3,12 @@ import subprocess
 import yt_dlp
 import threading
 import time
-from flask import Flask, jsonify
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
-# Initialize Flask app
-app = Flask(__name__)
+# Initialize FastAPI app
+app = FastAPI()
 
 # Base directory for handling file paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -51,20 +53,19 @@ def extract_audio_from_url(youtube_url):
 def stream_audio(audio_url, looping_video_path, output_url):
     try:
         ffmpeg_command = [
-    'ffmpeg',
-    '-loglevel', 'info', '-re',  # Real-time processing
-    '-stream_loop', '-1', '-i', looping_video_path,  # Loop the video infinitely
-    '-i', audio_url,
-    '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',  # Faster encoding
-    '-b:v', '150k', '-maxrate', '150k', '-bufsize', '300k',  # Lower video bitrate
-    '-r', '15', '-s', '426x240', '-vf', 'format=yuv420p',  # Lower resolution
-    '-g', '30',  # Keyframe interval
-    '-shortest',  # Stop if the shortest input ends
-    '-c:a', 'aac', '-b:a', '96k', '-ar', '44100',  # Lower audio bitrate
-    '-map', '0:v', '-map', '1:a',  # Map video and audio streams
-    '-f', 'flv', output_url
-            ]
-
+            'ffmpeg',
+            '-loglevel', 'info', '-re',  # Real-time processing
+            '-stream_loop', '-1', '-i', looping_video_path,  # Loop the video infinitely
+            '-i', audio_url,
+            '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',  # Faster encoding
+            '-b:v', '150k', '-maxrate', '150k', '-bufsize', '300k',  # Lower video bitrate
+            '-r', '15', '-s', '426x240', '-vf', 'format=yuv420p',  # Lower resolution
+            '-g', '30',  # Keyframe interval
+            '-shortest',  # Stop if the shortest input ends
+            '-c:a', 'aac', '-b:a', '96k', '-ar', '44100',  # Lower audio bitrate
+            '-map', '0:v', '-map', '1:a',  # Map video and audio streams
+            '-f', 'flv', output_url
+        ]
         subprocess.run(ffmpeg_command, check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error streaming audio: {e}")
@@ -115,28 +116,29 @@ def start_streaming():
                 print(f"Error: Unable to extract audio from {audio_url}")
         time.sleep(1)  # Short delay between loops
 
-# Define Flask routes for control
-@app.route('/stop', methods=['POST'])
-def stop_stream():
+# FastAPI routes for control
+@app.post("/stop")
+async def stop_stream():
     global streaming_active
     if streaming_active:
         streaming_active = False
         print("Stopping the stream...")
-        return jsonify({"message": "Streaming stopped!"}), 200
+        return JSONResponse(content={"message": "Streaming stopped!"}, status_code=200)
     else:
-        return jsonify({"message": "Streaming is not running."}), 400
+        return JSONResponse(content={"message": "Streaming is not running."}, status_code=400)
 
-@app.route('/')
-def home():
-    return jsonify({"message": "Streaming is running!"})
+@app.get("/")
+async def home():
+    return {"message": "Streaming is running!"}
 
 # Entry point
 def main():
     # Start streaming in a separate thread
     threading.Thread(target=start_streaming, daemon=True).start()
 
-    # Start the Flask web server on port 5000 or dynamically assigned port
-    app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
+    # Start FastAPI server
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
 
 if __name__ == "__main__":
     main()
