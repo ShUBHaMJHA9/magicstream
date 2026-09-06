@@ -1,0 +1,24 @@
+# ==============================================================================
+# YT_LIVE Production Dependencies
+# Author: Shubham Kumar Jha
+# License: MIT
+# ==============================================================================
+
+# Core Media Extraction & Streaming
+yt-dlp>=2024.8.6
+
+# Web Dashboard & REST Control API
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+
+# Configuration & Environment
+pyyaml>=6.0.1
+python-dotenv>=1.0.1
+
+# HTTP & Progress Utilities
+requests>=2.31.0
+tqdm>=4.66.2
+
+# Background Scheduler for Automated Tasks
+apscheduler>=3.10.4

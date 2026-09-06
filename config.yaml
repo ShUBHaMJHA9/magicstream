@@ -1,0 +1,151 @@
+# ==============================================================================
+# YT_LIVE: Professional Multi-Platform Live Streaming Engine
+# Configuration File
+# Author: Shubham Kumar Jha
+# License: MIT
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. STREAMING DESTINATION SETTINGS
+# ------------------------------------------------------------------------------
+destination:
+  # Target platform: "youtube", "facebook", "twitch", "kick", or "custom"
+  platform: "youtube"
+
+  # Stream Key (Can also be set via STREAM_KEY environment variable)
+  stream_key: "q2d6-9xch-u8t0-8bjp-74mp"
+
+  # Custom RTMP / RTMPS server URL (Used only when platform is "custom")
+  custom_rtmp_url: ""
+
+  # Predefined RTMP Server Endpoints
+  endpoints:
+    youtube: "rtmp://a.rtmp.youtube.com/live2/{stream_key}"
+    youtube_backup: "rtmp://b.rtmp.youtube.com/live2?backup=1/{stream_key}"
+    facebook: "rtmps://live-api-s.facebook.com:443/rtmp/{stream_key}"
+    twitch: "rtmp://live.twitch.tv/app/{stream_key}"
+    kick: "rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/{stream_key}"
+
+# ------------------------------------------------------------------------------
+# 2. STREAMING MODE CONFIGURATION
+# Available Modes:
+#   mode_1_radio: Looping background video + YouTube audio stream / playlist
+#   mode_2_yt_relay: Relay an existing YouTube live stream or video
+#   mode_3_custom: Combine any custom video URL/file + custom audio URL/file
+#   mode_4_local_playlist: Continuous 24/7 loop of local video/audio files
+#   mode_5_direct_relay: Direct HLS/m3u8/RTMP stream restreamer
+# ------------------------------------------------------------------------------
+streaming:
+  # Default active mode on launch
+  mode: "mode_1_radio"
+
+  # Playback ordering: "random" (shuffle songs) or "sequential" (one-by-one loop)
+  playback_order: "random"
+
+  # Background video selection: "random" (pick random clip from video/), "sequential", or "single"
+  video_selection: "random"
+
+  # Mode 1 Settings (Radio Looper)
+  mode_1_radio:
+    video_path: "video/vid.mp4"
+    audio_source: "audio/audio.txt"  # File with YouTube URLs or local audio files
+    shuffle: true
+    loop_continuous: true
+
+  # Mode 2 Settings (YouTube Relay / Restream)
+  mode_2_yt_relay:
+    youtube_source_url: "https://www.youtube.com/watch?v=jfKfPfyJRdk"
+    stream_live_source: true         # Automatically follows live streams
+    quality: "best"                  # "best", "1080p", "720p", "480p"
+    cookie_file: "cookies.txt"       # yt-dlp cookie file for authenticated/age-gated streams
+
+  # Mode 3 Settings (Custom Media Combiner)
+  mode_3_custom:
+    video_source: "video/vid.mp4"    # Local video file or remote direct video URL
+    audio_source: "https://www.youtube.com/watch?v=F-FGwn4D_EY" # Audio URL or local file
+    loop_video: true
+
+  # Mode 4 Settings (Local Media Playlist 24/7 Looper)
+  mode_4_local_playlist:
+    video_dir: "video"
+    audio_dir: "audio"
+    shuffle: false
+    continuous_loop: true
+
+  # Mode 5 Settings (Direct HLS/RTMP/RTSP Relay)
+  mode_5_direct_relay:
+    input_stream_url: "https://example.com/live/stream.m3u8"
+    re_encode: true
+
+# ------------------------------------------------------------------------------
+# 3. WATERMARK / LOGO OVERLAY SETTINGS
+# ------------------------------------------------------------------------------
+overlay:
+  # Enable or disable watermark overlay on stream
+  enable: true
+
+  # Path to logo file (supports .svg, .png, .jpg)
+  logo_path: "logo/logo.svg"
+
+  # Placement on screen:
+  # "top-right", "top-left", "bottom-right", "bottom-left", "center"
+  position: "top-right"
+
+  # Margin from edges (pixels)
+  margin_x: 24
+  margin_y: 24
+
+  # Width in pixels to scale overlay (-1 preserves native dimension)
+  scale_width: 200
+
+  # Opacity: 0.1 (faint) to 1.0 (fully opaque)
+  opacity: 0.92
+
+# ------------------------------------------------------------------------------
+# 4. ADAPTIVE VIDEO ENCODING & QUALITY PROFILES
+# ------------------------------------------------------------------------------
+encoding:
+  # Quality Profile:
+  #   "auto"      -> Automatically detects machine RAM/CPU/containers (512MB RAM up to 16-core servers)
+  #   "ultra_low" -> 240p @ 15fps, 250k bitrate (Optimized for 500MB - 1GB RAM, 0.1 - 0.5 vCPU)
+  #   "low"       -> 480p @ 24fps, 800k bitrate (Optimized for 1GB - 2GB RAM, 1 vCPU)
+  #   "medium"    -> 720p @ 30fps, 2500k bitrate (Optimized for 2GB - 4GB RAM, 2 vCPUs)
+  #   "high"      -> 1080p @ 30fps, 4500k bitrate (Optimized for 4GB+ RAM, 4+ vCPUs or GPU)
+  quality_profile: "auto"
+
+  # Hardware acceleration: "auto", "nvenc" (NVIDIA), "vaapi" (Intel/AMD), "cpu"
+  hw_accel: "auto"
+
+# ------------------------------------------------------------------------------
+# 5. 24/7 AUTO-RECONNECT & ADAPTIVE RESILIENCE
+# ------------------------------------------------------------------------------
+resilience:
+  # Automatically reconnect when stream drops
+  auto_reconnect: true
+
+  # Auto-downgrade quality profile if machine is struggling (speed < 0.85x) to prevent lag/crashes
+  auto_downgrade_on_lag: true
+
+  # Maximum consecutive reconnect attempts before cooling down
+  max_retries: 50
+
+  # Delay between reconnect attempts in seconds
+  retry_delay_sec: 5
+
+  # Exponential backoff factor (1.2 = smooth backoff)
+  backoff_factor: 1.2
+
+  # Maximum backoff delay in seconds
+  max_retry_delay_sec: 60
+
+  # Refresh yt-dlp extracted URLs before each reconnect to prevent expired CDN URLs
+  refresh_url_on_retry: true
+
+# ------------------------------------------------------------------------------
+# 6. REST API & DASHBOARD SETTINGS
+# ------------------------------------------------------------------------------
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8000
+  log_level: "info"

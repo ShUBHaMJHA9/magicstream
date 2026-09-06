@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  yt-live:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yt_live_broadcaster
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - STREAM_PLATFORM=youtube
+      - STREAM_KEY=${STREAM_KEY:-q2d6-9xch-u8t0-8bjp-74mp}
+      - STREAM_MODE=mode_1_radio
+      - HW_ACCEL=auto
+      - PORT=8000
+    volumes:
+      - ./video:/app/video
+      - ./audio:/app/audio
+      - ./logo:/app/logo
+      - ./config.yaml:/app/config.yaml
+      - ./cookies.txt:/app/cookies.txt
+    # Memory and CPU limits demonstrating safe 500MB / 1GB container streaming capability
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1.0'

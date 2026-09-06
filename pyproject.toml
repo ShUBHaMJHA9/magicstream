@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yt-live"
+version = "2.0.0"
+description = "Professional 24/7 Multi-Platform Live Broadcast Engine with Adaptive Hardware Downgrading, Watermark Overlays, and Multi-Destination RTMP."
+readme = "README.md"
+authors = [
+    { name = "Shubham Kumar Jha" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = [
+    "youtube-live",
+    "facebook-live",
+    "live-streaming",
+    "ffmpeg",
+    "restreamer",
+    "radio-stream",
+    "24-7-stream",
+    "rtmp"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Video :: Capture",
+    "Topic :: Multimedia :: Sound/Audio"
+]
+dependencies = [
+    "yt-dlp>=2024.8.6",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "pydantic>=2.6.0",
+    "pyyaml>=6.0.1",
+    "python-dotenv>=1.0.1",
+    "requests>=2.31.0",
+    "tqdm>=4.66.2",
+    "apscheduler>=3.10.4"
+]
+
+[project.scripts]
+yt-live = "main:main"
