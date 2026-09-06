@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "yt-live"
+name = "magicstream"
 version = "2.0.0"
-description = "Professional 24/7 Multi-Platform Live Broadcast Engine with Adaptive Hardware Downgrading, Watermark Overlays, and Multi-Destination RTMP."
+description = "Professional 24/7 Multi-Platform Live Broadcast Engine with Adaptive Hardware Downgrading, Watermark Overlays, Studio TUI, and Multi-Destination RTMP."
 readme = "README.md"
 authors = [
     { name = "Shubham Kumar Jha" }
@@ -13,21 +13,33 @@ authors = [
 license = { text = "MIT" }
 requires-python = ">=3.9"
 keywords = [
+    "magicstream",
     "youtube-live",
     "facebook-live",
+    "twitch",
+    "kick",
     "live-streaming",
     "ffmpeg",
     "restreamer",
     "radio-stream",
     "24-7-stream",
-    "rtmp"
+    "rtmp",
+    "broadcast"
 ]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
     "Topic :: Multimedia :: Video :: Capture",
-    "Topic :: Multimedia :: Sound/Audio"
+    "Topic :: Multimedia :: Sound/Audio",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent"
 ]
 dependencies = [
     "yt-dlp>=2024.8.6",
@@ -42,4 +54,9 @@ dependencies = [
 ]
 
 [project.scripts]
-yt-live = "main:main"
+magicstream = "magicstream.cli:main"
+magicstream-studio = "magicstream.runner:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["magicstream*", "core*"]

@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  yt-live:
+  magicstream:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: yt_live_broadcaster
+    container_name: magicstream_broadcaster
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -19,6 +19,7 @@ services:
       - ./video:/app/video
       - ./audio:/app/audio
       - ./logo:/app/logo
+      - ./logs:/app/logs
       - ./config.yaml:/app/config.yaml
       - ./cookies.txt:/app/cookies.txt
     # Memory and CPU limits demonstrating safe 500MB / 1GB container streaming capability

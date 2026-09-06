@@ -1,6 +1,6 @@
 """
 ================================================================================
-YT_LIVE: Automated Video Scheduler & Chunked Uploader
+MagicStream: Automated Video Scheduler & Chunked Uploader
 Author: Shubham Kumar Jha
 License: MIT
 ================================================================================

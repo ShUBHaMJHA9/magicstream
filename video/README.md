@@ -1,6 +1,7 @@
 # Video Directory (`video/`)
 
-This directory is dedicated to storing local video loops, background clips, and video playlist files for the **YT_LIVE** streaming engine.
+This directory is dedicated to storing local video loops, background clips, and video playlist files for the **MagicStream** broadcast engine.
+
 
 ## Structure & Usage
 
