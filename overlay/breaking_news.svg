@@ -83,15 +83,15 @@
       HOT TOPIC
     </text>
     <text x="260" y="82" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#ffffff">
-      U.S. military says it hit 3
+      Russia’s Putin and US envoys discuss
     </text>
     <text x="260" y="98" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="10" font-weight="600" fill="#cbd5e1">
-      Iranian tankers after Navy ships targeted
+      Trump proposal to end Ukraine war
     </text>
 
     <!-- Headline Summary Text -->
     <text x="20" y="152" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="16" font-weight="800" fill="#ffffff">
-      U.S. military says it hit 3 Iranian tankers after Navy ships targeted
+      Russia’s Putin and US envoys discuss Trump proposal to end Ukraine war
     </text>
 
     <!-- Divider Line -->
@@ -101,7 +101,7 @@
     <g transform="translate(20, 192)">
       <circle cx="6" cy="-4" r="3" fill="#fbbf24"/>
       <text x="18" y="0" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#e2e8f0">
-        Live Broadcast Wire: THE WASHINGTON POST
+        Live Broadcast Wire: AL JAZEERA
       </text>
 
       <circle cx="6" cy="18" r="3" fill="#00f0ff"/>
@@ -124,7 +124,7 @@
       ⚡ SOURCE:
     </text>
     <text x="85" y="275" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#38bdf8">
-      THE WASHINGTON POST
+      AL JAZEERA
     </text>
 
     <!-- Creative Commons & Legal Protection Notice -->
@@ -148,13 +148,13 @@
     <path d="M 295 0 L 560 0 L 535 42 L 270 42 Z" fill="#0f172a" stroke="#334155" stroke-width="1"/>
     <circle cx="315" cy="21" r="5" fill="#ef4444" filter="url(#glowRed)"/>
     <text x="330" y="26" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="13" font-weight="800" fill="#ffffff" letter-spacing="1">
-      LIVE <tspan fill="#94a3b8">• NEW DELHI • 16:31 IST</tspan>
+      LIVE <tspan fill="#94a3b8">• NEW DELHI • 16:32 IST</tspan>
     </text>
 
     <!-- Secondary Category Ribbon (Right Edge) -->
     <path d="M 1030 10 L 1240 10 L 1240 42 L 1005 42 Z" fill="#1e293b"/>
     <text x="1220" y="30" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#38bdf8" text-anchor="end" letter-spacing="1">
-      FEED: THE WASHINGTON POST
+      FEED: AL JAZEERA
     </text>
 
     <!-- Main Headline Plate (Full Width) -->
@@ -164,7 +164,7 @@
 
     <!-- Main Headline Text -->
     <text x="30" y="100" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="28" font-weight="900" fill="#ffffff" letter-spacing="0.5">
-      U.S. military says it hit 3 Iranian tankers after Navy ships targeted
+      Russia’s Putin and US envoys discuss Trump proposal to end Ukraine war
     </text>
 
     <!-- Running Ticker Strip (Bottom Tier) -->
@@ -177,7 +177,7 @@
 
     <!-- Running Ticker Headlines -->
     <text x="185" y="161" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#f8fafc">
-      Russia’s Putin and US envoys discuss Trump proposal to end Ukraine war   ✦   Fundraiser for Lindsay Clancy’s Parents Raises Over $1.1 Mil...
+      Trump weighs in on Lindsay Clancy murder trial dubbed 'kangaroo court' by GOP leaders   ✦   Washington blocks new Trump mail voting rules...
     </text>
   </g>
 </svg>
