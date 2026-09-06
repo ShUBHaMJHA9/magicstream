@@ -94,6 +94,7 @@ class FFmpegBuilder:
         """Builds a complex filter string for scaling, opacity, and positioning of logo and/or lower-third banners."""
         res_colon = resolution.replace("x", ":")
         res_w = int(resolution.split("x")[0]) if "x" in resolution else 1920
+        res_h = int(resolution.split("x")[1]) if "x" in resolution else 1080
 
         def calc_coords(pos: str, mx: int, my: int) -> str:
             p = pos.lower().strip()

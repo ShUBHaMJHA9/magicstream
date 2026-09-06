@@ -148,7 +148,7 @@
     <path d="M 295 0 L 560 0 L 535 42 L 270 42 Z" fill="#0f172a" stroke="#334155" stroke-width="1"/>
     <circle cx="315" cy="21" r="5" fill="#ef4444" filter="url(#glowRed)"/>
     <text x="330" y="26" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="13" font-weight="800" fill="#ffffff" letter-spacing="1">
-      LIVE <tspan fill="#94a3b8">• NEW DELHI • 16:27 IST</tspan>
+      LIVE <tspan fill="#94a3b8">• NEW DELHI • 16:31 IST</tspan>
     </text>
 
     <!-- Secondary Category Ribbon (Right Edge) -->
@@ -177,7 +177,7 @@
 
     <!-- Running Ticker Headlines -->
     <text x="185" y="161" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#f8fafc">
-      Russia’s Putin and US envoys discuss Trump proposal to end Ukraine war   ✦   Trump weighs in on Lindsay Clancy murder trial dubbed 'kanga...
+      Russia’s Putin and US envoys discuss Trump proposal to end Ukraine war   ✦   Fundraiser for Lindsay Clancy’s Parents Raises Over $1.1 Mil...
     </text>
   </g>
 </svg>
