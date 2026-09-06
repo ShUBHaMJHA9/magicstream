@@ -138,7 +138,7 @@ class NewsFetcher:
 
 
 class NewsBroadcastStudio:
-    """Orchestrates audio bulletins, dynamic lower-thirds, and news assets for Mode 6."""
+    """Orchestrates AI anchor lip-sync video, audio bulletins, and TV graphics for Mode 6."""
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
@@ -146,28 +146,41 @@ class NewsBroadcastStudio:
         self.category = news_cfg.get("category", "world")
         self.language = news_cfg.get("language", "en")
         self.tts_enabled = news_cfg.get("tts_enabled", True)
+        self.ai_anchor_enabled = news_cfg.get("ai_anchor", True)
         self.fetcher = NewsFetcher(self.category)
+
+        from magicstream.anchor_engine import AnchorEngine
+        from magicstream.lipsync import LipSyncEngine
+        self.anchor_engine = AnchorEngine()
+        self.lipsync_engine = LipSyncEngine()
+        self.anchor_engine.ensure_assets()
+
+    def set_category(self, new_category: str) -> None:
+        """Dynamically switches active news category (e.g. world, india, technology, business, bbc)."""
+        self.category = new_category.lower().strip()
+        self.fetcher.category = self.category
 
     def generate_current_bulletin(
         self,
         story_index: int = 0,
         output_audio_path: str = "audio/news_bulletin.mp3",
-        output_svg_path: str = "overlay/breaking_news.svg"
+        output_svg_path: str = "overlay/breaking_news.svg",
+        output_video_path: str = "video/anchor_bulletin.mp4"
     ) -> Dict[str, Any]:
         """
-        Generates spoken audio bulletin and matching breaking news SVG lower-third.
-        Returns metadata about the active story.
+        Generates spoken audio bulletin, mixed broadcast audio bed, speech-driven
+        lip-synced AI anchor video, and full-screen TV broadcast SVG lower-third & OTS window.
         """
         stories = self.fetcher.fetch_stories(self.category, limit=10)
         idx = story_index % len(stories)
         active_story = stories[idx]
 
         # Upcoming headlines for bottom ticker
-        ticker_items = [s.clean_headline for s in stories[idx+1:idx+5]]
+        ticker_items = [s.clean_headline for s in stories[idx+1:idx+6]]
         if not ticker_items:
-            ticker_items = [s.clean_headline for s in stories[:3]]
+            ticker_items = [s.clean_headline for s in stories[:4]]
 
-        # 1. Generate Broadcast Lower-Third Overlay
+        # 1. Generate Authentic TV Broadcast Lower-Third & OTS Media Window Overlay
         OverlayGenerator.generate_news_lower_third(
             headline=active_story.clean_headline,
             category=active_story.category,
@@ -177,7 +190,7 @@ class NewsBroadcastStudio:
         )
 
         # 2. Generate Audio Speech Bulletin (if TTS enabled)
-        audio_file = output_audio_path
+        raw_audio_file = output_audio_path
         if self.tts_enabled and HAS_GTTS:
             try:
                 os.makedirs(os.path.dirname(output_audio_path) or ".", exist_ok=True)
@@ -189,12 +202,31 @@ class NewsBroadcastStudio:
                 tts = gTTS(speech_text, lang=self.language, slow=False)
                 tts.save(output_audio_path)
             except Exception:
-                # Fallback to default ambient audio if TTS generation encounters network delay
-                audio_file = self.config.get("streaming", {}).get("mode_6_news", {}).get("ambient_audio", "audio/news_ambient.mp3")
-                if not os.path.exists(audio_file):
-                    audio_file = self.config.get("streaming", {}).get("mode_1_radio", {}).get("audio_source", "audio/audio.txt")
+                raw_audio_file = "audio/news_ambient.aac"
         else:
-            audio_file = self.config.get("streaming", {}).get("mode_6_news", {}).get("ambient_audio", "audio/news_ambient.mp3")
+            raw_audio_file = "audio/news_ambient.aac"
+
+        # 3. Mix Broadcast Audio Bed (Vocal EQ + Ambient TV Newsroom Music Bed)
+        mixed_audio_path = "audio/news_broadcast_mixed.aac"
+        final_audio_path = self.anchor_engine.mix_broadcast_audio(
+            speech_path=raw_audio_file,
+            output_path=mixed_audio_path,
+            ambient_volume=0.16
+        )
+
+        # 4. Generate AI Anchorwoman Video with Speech-Driven Lip-Sync
+        final_video_path = output_video_path
+        if self.ai_anchor_enabled and os.path.exists(final_audio_path):
+            try:
+                final_video_path = self.lipsync_engine.generate_synced_video(
+                    audio_path=final_audio_path,
+                    output_video_path=output_video_path,
+                    video_bitrate="2500k"
+                )
+            except Exception:
+                final_video_path = "video/anchor_speaking_loop.mp4"
+                if not os.path.exists(final_video_path):
+                    final_video_path = self.config.get("streaming", {}).get("mode_6_news", {}).get("video_path", "video/vid.mp4")
 
         return {
             "story": active_story,
@@ -202,7 +234,10 @@ class NewsBroadcastStudio:
             "source": active_story.source,
             "category": active_story.category,
             "svg_path": output_svg_path,
-            "audio_path": audio_file,
+            "audio_path": final_audio_path,
+            "video_path": final_video_path,
+            "stinger_video": self.anchor_engine.get_stinger_clip(),
             "total_stories": len(stories),
             "story_index": idx + 1
         }
+

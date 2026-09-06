@@ -277,6 +277,7 @@ class LiveStreamManager:
                 except Exception:
                     pass
 
+        exec_start_time = time.time()
         last_ffmpeg_lines = deque(maxlen=40)
         try:
             self.active_process = subprocess.Popen(
@@ -303,14 +304,18 @@ class LiveStreamManager:
                         if match and self.auto_downgrade_enabled:
                             try:
                                 speed_val = float(match.group(1))
-                                if speed_val < 0.85:
-                                    self.lag_counter += 1
-                                    if self.lag_counter >= 5:
-                                        self.log(f"[Adaptive Watchdog] Encoding speed is lagging ({speed_val:.2f}x < 1.0x).", level="WARNING")
-                                        self._trigger_auto_downgrade()
-                                        break
-                                else:
-                                    self.lag_counter = max(0, self.lag_counter - 1)
+                                # Only evaluate speed after initial buffer has stabilized (at least 6 seconds)
+                                if (time.time() - exec_start_time) > 6.0:
+                                    if speed_val < 0.85:
+                                        self.lag_counter += 1
+                                        if self.lag_counter >= 5:
+                                            lower_profile = HardwareDetector.get_downgraded_profile_name(self.active_profile_name)
+                                            if lower_profile != self.active_profile_name:
+                                                self.log(f"[Adaptive Watchdog] Encoding speed is lagging ({speed_val:.2f}x < 1.0x).", level="WARNING")
+                                                self._trigger_auto_downgrade()
+                                                break
+                                    else:
+                                        self.lag_counter = max(0, self.lag_counter - 1)
                             except ValueError:
                                 pass
                     elif any(err_kw in stripped.lower() for err_kw in ("error", "fatal", "failed", "broken pipe", "connection refused", "invalid")):
@@ -323,7 +328,7 @@ class LiveStreamManager:
                     returncode = proc.wait(timeout=5)
                 except Exception:
                     returncode = -1
-            if returncode != 0 and not self.stop_requested:
+            if returncode != 0 and not self.stop_requested and not getattr(self, "_segment_transitioning", False):
                 error_summary = "\n  ".join(list(last_ffmpeg_lines)[-15:])
                 diag_msg = (
                     f"FFmpeg exited abnormally with return code {returncode}!\n"
@@ -694,31 +699,72 @@ class LiveStreamManager:
         )
         self._execute_ffmpeg(cmd)
 
+    def trigger_breaking_news_alert(self) -> None:
+        """Triggers an immediate 3D Breaking News Alert Stinger intro."""
+        self._force_stinger_alert = True
+        self.log("⚡ 3D Breaking News Alert Stinger triggered by studio controller!")
+        if self.active_process:
+            self.skip_track()
+
+    def set_news_category(self, category: str) -> None:
+        """Changes the live news category (world, india, technology, business, bbc)."""
+        self._requested_news_category = category
+        self.log(f"Switched News Category to: {category.upper()}")
+        if self.active_process:
+            self.skip_track()
+
     def _stream_mode_6_news(self, destination_url: str) -> None:
-        """Mode 6: 24/7 Live Breaking News Channel Studio with AI speech anchor & live lower-third ticker."""
+        """Mode 6: 24/7 Live Breaking News Channel Studio with AI Anchorwoman, Lip-Sync, Stinger & TV Graphics."""
         from magicstream.news_engine import NewsBroadcastStudio
         studio = NewsBroadcastStudio(self.config_manager.config)
-        news_cfg = self.config_manager.get("streaming", {}).get("mode_6_news", {})
-        video_path = news_cfg.get("video_path", "video/vid.mp4")
-
-        if not os.path.exists(video_path) and os.path.exists("video"):
-            files = [os.path.join("video", f) for f in os.listdir("video") if f.endswith((".mp4", ".mkv", ".mov", ".webm"))]
-            if files:
-                video_path = files[0]
+        self.news_studio = studio
 
         story_idx = 0
+        play_stinger_next = True  # Start broadcast with dynamic 3D breaking news stinger alert
+
         while not self.stop_requested and self.is_running:
             try:
+                # 1. Handle live category switch if requested
+                requested_cat = getattr(self, "_requested_news_category", None)
+                if requested_cat:
+                    studio.set_category(requested_cat)
+                    self._requested_news_category = None
+                    self.log(f"Live News Studio Category switched to: {requested_cat.upper()}")
+
+                # 2. Check if Breaking News Stinger Alert should be played
+                force_stinger = getattr(self, "_force_stinger_alert", False)
+                if play_stinger_next or force_stinger:
+                    self._force_stinger_alert = False
+                    play_stinger_next = False
+                    stinger_clip = studio.anchor_engine.get_stinger_clip()
+                    if stinger_clip and os.path.exists(stinger_clip):
+                        self.log("⚡ [LIVE BROADCAST] Playing 3D Breaking News Alert Stinger Intro...")
+                        self._segment_transitioning = True
+                        stinger_cmd = self.ffmpeg_builder.build_relay_command(
+                            video_source_url=stinger_clip,
+                            audio_source_url=None,
+                            destination_url=destination_url,
+                            is_live=False,
+                            profile_override=self.active_profile_name,
+                        )
+                        self._execute_ffmpeg(stinger_cmd)
+                        self._segment_transitioning = False
+                        if self.stop_requested:
+                            break
+
+                # 3. Generate Speech-Driven Lip-Synced AI Anchor Bulletin
+                self.log(f"Preparing AI News Anchor Bulletin [Story #{story_idx + 1}]...")
                 bulletin = studio.generate_current_bulletin(story_index=story_idx)
                 headline = bulletin["headline"]
                 source = bulletin["source"]
+                video_path = bulletin["video_path"]
                 audio_path = bulletin["audio_path"]
                 svg_path = bulletin["svg_path"]
 
                 self.current_media_title = f"[BREAKING NEWS] {headline} ({source})"
                 self.current_track_index = bulletin["story_index"]
                 self.total_tracks = bulletin["total_stories"]
-                self.log(f"Broadcasting News Bulletin [{self.current_track_index}/{self.total_tracks}]: {headline} - {source}")
+                self.log(f"📺 Broadcasting AI Anchor Live: '{headline}' • Source: {source}")
 
                 cmd = self.ffmpeg_builder.build_news_command(
                     video_path=video_path,
@@ -727,9 +773,17 @@ class LiveStreamManager:
                     banner_path=svg_path,
                     profile_override=self.active_profile_name,
                 )
+                self._segment_transitioning = True
                 self._execute_ffmpeg(cmd)
+                self._segment_transitioning = False
+
                 story_idx += 1
+                # Trigger a dramatic breaking news stinger alert every 3 headlines for authentic TV pacing
+                if story_idx % 3 == 0:
+                    play_stinger_next = True
+
             except Exception as e:
                 self.log(f"News studio engine error: {e}", level="ERROR")
-                time.sleep(5)
+                time.sleep(3)
+
 

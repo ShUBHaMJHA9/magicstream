@@ -39,6 +39,10 @@ logs/
 
 # Scratch & temporary test files
 scratch/
+audio/news_bulletin.mp3
+audio/news_broadcast_mixed.aac
+video/anchor_bulletin.mp4
+
 
 # Environment variables
 .env

@@ -129,6 +129,11 @@ class FFmpegBuilder:
 
         # 2. Lower-Third Banner Layer (Music Now Playing or News Ticker)
         if banner_input_index is not None:
+            if banner_position == "fullscreen":
+                filters.append(f"[{banner_input_index}:v]format=rgba,scale={res_w}:{res_h}[banner]")
+                filters.append(f"{current_base}[banner]overlay=0:0[outv]")
+                return ";".join(filters)
+
             if banner_scale_width is None:
                 if res_w >= 1920:
                     b_w = 820
@@ -459,8 +464,8 @@ class FFmpegBuilder:
                 margin_y=overlay_cfg.get("margin_y", 24),
                 opacity=overlay_cfg.get("opacity", 0.92),
                 max_allowed_logo_width=enc_params.get("max_logo_width", 200),
-                banner_scale_width=news_banner_width,
-                banner_position="bottom-center",
+                banner_scale_width=res_w,
+                banner_position="fullscreen",
             )
             cmd.extend(["-filter_complex", filter_str, "-map", "[outv]", "-map", "1:a"])
         else:

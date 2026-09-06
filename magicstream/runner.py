@@ -388,7 +388,10 @@ def run_terminal_studio(streamer: LiveStreamManager) -> None:
                     out.append(render_box_line(colored_line))
 
             out.append(render_box_separator("HOTKEYS & STUDIO CONTROLS", CLR_CYAN))
-            out.append(render_box_line(f"{CLR_GREEN}[N]{CLR_RESET} Next Song  {CLR_YELLOW}[P]{CLR_RESET} Toggle Shuffle  {CLR_CYAN}[D]{CLR_RESET} Downgrade  {CLR_MAGENTA}[S]{CLR_RESET} Pause  {CLR_RED}[Q]{CLR_RESET} Quit"))
+            if status["mode"] == "mode_6_news":
+                out.append(render_box_line(f"{CLR_RED}{CLR_BOLD}[B]{CLR_RESET} Stinger Alert  {CLR_CYAN}[C]{CLR_RESET} News Category  {CLR_GREEN}[N]{CLR_RESET} Next Story  {CLR_YELLOW}[D]{CLR_RESET} Downgrade  {CLR_MAGENTA}[S]{CLR_RESET} Pause  {CLR_RED}[Q]{CLR_RESET} Quit"))
+            else:
+                out.append(render_box_line(f"{CLR_GREEN}[N]{CLR_RESET} Next Song  {CLR_YELLOW}[P]{CLR_RESET} Toggle Shuffle  {CLR_CYAN}[D]{CLR_RESET} Downgrade  {CLR_MAGENTA}[S]{CLR_RESET} Pause  {CLR_RED}[Q]{CLR_RESET} Quit"))
             out.append(render_box_bottom(CLR_CYAN))
 
             sys.stdout.write("\n".join(out) + "\n")
@@ -402,8 +405,20 @@ def run_terminal_studio(streamer: LiveStreamManager) -> None:
                     streamer.stop()
                     running = False
                     break
+                elif key == "b":
+                    streamer.log("[Hotkey] ⚡ Triggering 3D Breaking News Alert Stinger Intro...")
+                    if hasattr(streamer, "trigger_breaking_news_alert"):
+                        streamer.trigger_breaking_news_alert()
+                elif key == "c":
+                    cats = ["world", "india", "technology", "business", "bbc"]
+                    curr_cat = streamer.config_manager.config.get("streaming", {}).get("mode_6_news", {}).get("category", "world")
+                    next_cat = cats[(cats.index(curr_cat) + 1) % len(cats)] if curr_cat in cats else "world"
+                    streamer.config_manager.config["streaming"]["mode_6_news"]["category"] = next_cat
+                    streamer.log(f"[Hotkey] News Category switched to: {next_cat.upper()}")
+                    if hasattr(streamer, "set_news_category"):
+                        streamer.set_news_category(next_cat)
                 elif key == "n":
-                    streamer.log("[Hotkey] Skipping to next track...")
+                    streamer.log("[Hotkey] Skipping to next track/headline...")
                     streamer.skip_track()
                 elif key == "p":
                     new_order = "sequential" if streamer.playback_order == "random" else "random"

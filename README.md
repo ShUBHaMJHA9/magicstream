@@ -137,7 +137,9 @@ magicstream -t
 ### Live Studio Hotkeys:
 | Hotkey | Action | Description |
 | :---: | :--- | :--- |
-| **`[N]`** | Next Song / Track | Instantly skips to the next track in the playlist |
+| **`[B]`** | 3D Breaking Stinger | Instantly flashes dramatic ABP News-style 3D Breaking News Alert stinger intro |
+| **`[C]`** | News Category | Cycles news categories on the fly (`world`, `india`, `technology`, `business`, `bbc`) |
+| **`[N]`** | Next Song / Story | Instantly skips to the next track or news headline |
 | **`[P]`** | Toggle Playback Mode | Switches between **Random Shuffle** 🔀 and **Sequential Loop** 🔁 |
 | **`[D]`** | Dynamic Downgrade | Drops current stream resolution by one tier (e.g. 1080p → 720p) |
 | **`[S]`** | Pause / Resume | Safely pauses the live broadcast without crashing |
@@ -246,6 +248,8 @@ magicstream/
 
 | Module | Core Classes | Responsibility |
 | :--- | :--- | :--- |
+| **`magicstream.lipsync`** | `LipSyncEngine` | Speech-driven audio-visual synchronization: analyzes audio RMS envelope and animates anchor mouth visemes frame-by-frame. |
+| **`magicstream.anchor_engine`** | `AnchorEngine` | Orchestrates AI virtual presenter visuals, vocal EQ & broadcast newsroom music bed mixing, and ABP-style 3D stinger intros. |
 | **`magicstream.streamer`** | `LiveStreamManager` | Manages active stream processes, thread-safe start/stop/pause/skip cycles, multi-mode loops, and auto-reconnect logic. |
 | **`magicstream.ffmpeg_builder`** | `FFmpegBuilder` | Constructs hardware-optimized FFmpeg commands, encoder detection (libx264, h264_nvenc, h264_vaapi), and multi-input overlay filtergraphs. |
 | **`magicstream.extractor`** | `StreamUrlExtractor` | Uses `yt-dlp` to extract direct streaming video/audio URLs on the fly with smart metadata caching. |

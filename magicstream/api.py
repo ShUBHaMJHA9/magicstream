@@ -265,7 +265,27 @@ def create_api_app(streamer: LiveStreamManager) -> Any:
         if was_running:
             streamer.start()
 
-        return {"message": f"Quality profile set to {streamer.active_profile_name}", "profile_info": QUALITY_PROFILES.get(streamer.active_profile_name)}
+        return {"message": f"Quality profile set to {streamer.active_profile_name}", "profile": streamer.active_profile_name}
+
+    @app.post("/news/stinger")
+    async def trigger_stinger():
+        """Triggers a 3D Breaking News Alert Stinger intro on the live stream."""
+        if hasattr(streamer, "trigger_breaking_news_alert"):
+            streamer.trigger_breaking_news_alert()
+            return {"message": "3D Breaking News Alert Stinger triggered."}
+        return JSONResponse(status_code=400, content={"message": "Not in news mode."})
+
+    @app.post("/news/category")
+    async def switch_category(category: str = "world"):
+        """Switches active news category (world, india, technology, business, bbc)."""
+        valid_cats = ["world", "india", "technology", "business", "bbc"]
+        cat_clean = category.lower().strip()
+        if cat_clean not in valid_cats:
+            raise HTTPException(status_code=400, detail=f"Invalid category: {category}. Choose from {valid_cats}")
+        if hasattr(streamer, "set_news_category"):
+            streamer.set_news_category(cat_clean)
+            return {"message": f"Switched news category to {cat_clean.upper()}"}
+        return JSONResponse(status_code=400, content={"message": "Not in news mode."})
 
     @app.post("/switch-mode")
     async def switch_mode(req: SwitchModeRequest):
