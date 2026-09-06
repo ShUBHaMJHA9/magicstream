@@ -78,8 +78,16 @@ streaming:
     input_stream_url: "https://example.com/live/stream.m3u8"
     re_encode: true
 
+  # Mode 6 Settings (24/7 Live Breaking News Channel Engine)
+  mode_6_news:
+    category: "world"                # "world", "india", "technology", "business", "bbc"
+    language: "en"                   # "en", "hi", etc.
+    tts_enabled: true                # Automated AI speech anchor reads breaking headlines
+    ambient_audio: "audio/news_ambient.mp3" # Background broadcast music bed
+    video_path: "video/vid.mp4"      # News studio looping background video
+
 # ------------------------------------------------------------------------------
-# 3. WATERMARK / LOGO OVERLAY SETTINGS
+# 3. WATERMARK / LOGO & BROADCAST CARDS OVERLAY SETTINGS
 # ------------------------------------------------------------------------------
 overlay:
   # Enable or disable watermark overlay on stream
@@ -101,6 +109,12 @@ overlay:
 
   # Opacity: 0.1 (faint) to 1.0 (fully opaque)
   opacity: 0.92
+
+  # Music Channel "Now Playing" & "Up Next" On-Screen Display (Zee Music / MTV style)
+  now_playing:
+    enable: true
+    channel_name: "MAGICSTREAM LIVE"
+    position: "bottom-left"
 
 # ------------------------------------------------------------------------------
 # 4. ADAPTIVE VIDEO ENCODING & QUALITY PROFILES

@@ -107,13 +107,15 @@ def interactive_wizard(config_manager: ConfigManager) -> None:
     print(f"  {CLR_CYAN}[3]{CLR_RESET} Mode 3: Custom Media Combiner (Custom Video Link/File + Custom Audio)")
     print(f"  {CLR_CYAN}[4]{CLR_RESET} Mode 4: Local Media Playlist 24/7 Looper")
     print(f"  {CLR_CYAN}[5]{CLR_RESET} Mode 5: Direct Stream Relay (HLS/m3u8/RTMP)")
-    mode_choice = prompt_choice("Choose Mode (1-5)", "1")
+    print(f"  {CLR_CYAN}[6]{CLR_RESET} Mode 6: 24/7 Live Breaking News Channel Studio (AI Speech Anchor + Live Ticker)")
+    mode_choice = prompt_choice("Choose Mode (1-6)", "1")
     mode_map = {
         "1": "mode_1_radio",
         "2": "mode_2_yt_relay",
         "3": "mode_3_custom",
         "4": "mode_4_local_playlist",
         "5": "mode_5_direct_relay",
+        "6": "mode_6_news",
     }
     selected_mode = mode_map.get(mode_choice, "mode_1_radio")
     config_manager.config["streaming"]["mode"] = selected_mode
@@ -221,6 +223,27 @@ def interactive_wizard(config_manager: ConfigManager) -> None:
         config_manager.config["streaming"]["mode_5_direct_relay"]["input_stream_url"] = stream_url
         config_manager.config["streaming"]["playback_order"] = "sequential"
         config_manager.config["streaming"]["video_selection"] = "single"
+
+    elif selected_mode == "mode_6_news":
+        print(f"\n{CLR_BOLD}{CLR_MAGENTA}--- 24/7 Live Breaking News Channel Setup ---{CLR_RESET}")
+        print(f"  {CLR_CYAN}[1]{CLR_RESET} World News (Google News RSS)")
+        print(f"  {CLR_CYAN}[2]{CLR_RESET} India News (National Headlines)")
+        print(f"  {CLR_CYAN}[3]{CLR_RESET} Technology & AI News")
+        print(f"  {CLR_CYAN}[4]{CLR_RESET} Business & Markets")
+        print(f"  {CLR_CYAN}[5]{CLR_RESET} BBC World News RSS")
+        cat_choice = prompt_choice("Choose News Category (1-5)", "1")
+        cat_map = {"1": "world", "2": "india", "3": "technology", "4": "business", "5": "bbc"}
+        config_manager.config["streaming"]["mode_6_news"]["category"] = cat_map.get(cat_choice, "world")
+
+        tts_choice = prompt_choice("Enable AI Speech Anchor (Text-to-Speech)? (Y/N)", "Y").upper()
+        config_manager.config["streaming"]["mode_6_news"]["tts_enabled"] = (tts_choice != "N")
+
+        default_video = config_manager.config["streaming"]["mode_6_news"].get("video_path", "video/vid.mp4")
+        video_src = prompt_choice("Background Loop Video", default_video)
+        config_manager.config["streaming"]["mode_6_news"]["video_path"] = video_src
+        config_manager.config["streaming"]["playback_order"] = "sequential"
+        config_manager.config["streaming"]["video_selection"] = "single"
+
 
     # Step 4: Quality Profile
     print(f"\n{CLR_BOLD}{CLR_MAGENTA}--- Step 3: Video Quality Profile ---{CLR_RESET}")

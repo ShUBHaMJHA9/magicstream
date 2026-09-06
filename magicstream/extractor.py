@@ -23,8 +23,17 @@ class MediaExtractor:
     def __init__(self, cookie_file: Optional[str] = "cookies.txt"):
         self.cookie_file = cookie_file if cookie_file and os.path.exists(cookie_file) else None
         self._url_cache: Dict[str, Dict[str, Any]] = {}
+        self._title_cache: Dict[str, str] = {}
         self.cache_ttl_seconds = 3600 * 2
         self.last_error: Optional[str] = None
+
+    def get_title(self, url: str) -> str:
+        """Returns cached or extracted human-readable title of media."""
+        if not url:
+            return ""
+        if not url.startswith(("http://", "https://")):
+            return os.path.splitext(os.path.basename(url))[0]
+        return self._title_cache.get(url, os.path.basename(url))
 
     def _get_ydl_options(self, audio_only: bool = False, quality: str = "best") -> Dict[str, Any]:
         """Build yt-dlp extraction options with mobile client bypasses for bot blocks."""
@@ -86,6 +95,9 @@ class MediaExtractor:
                 info = ydl.extract_info(url, download=False)
                 if not info:
                     return None
+
+                if info.get("title"):
+                    self._title_cache[url] = info["title"]
 
                 stream_url = info.get("url")
                 if not stream_url:

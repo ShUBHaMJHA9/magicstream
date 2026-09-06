@@ -4,24 +4,29 @@
 
 **Enterprise-grade, adaptive 24/7 live streaming engine and Python library for YouTube Live, Facebook Live, Twitch, Kick & Custom RTMP servers.**
 
+[![GitHub Repo](https://img.shields.io/badge/GitHub-ShUBHaMJHA9%2Fmagicstream-181717.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/ShUBHaMJHA9/magicstream)
 [![PyPI Version](https://img.shields.io/badge/pip-magicstream-blue.svg?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/)
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-5.0%2B-green.svg?style=for-the-badge&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Author](https://img.shields.io/badge/Author-Shubham%20Kumar%20Jha-red.svg?style=for-the-badge)](https://github.com/shubhamkumarjha)
+[![Author](https://img.shields.io/badge/Author-Shubham%20Kumar%20Jha-red.svg?style=for-the-badge)](https://github.com/ShUBHaMJHA9)
 
 <p align="center">
   <a href="#-key-features">Key Features</a> •
   <a href="#-quickstart-guide">Quickstart</a> •
   <a href="#-cyberpunk-terminal-studio">Terminal Studio</a> •
   <a href="#-streaming-modes">Streaming Modes</a> •
+  <a href="#-on-screen-display--tv-graphics">On-Screen Graphics</a> •
+  <a href="#-architecture--module-reference">Architecture & Modules</a> •
   <a href="#-continuous-error-logging">Error Logging</a> •
   <a href="#-adaptive-hardware-engine">Adaptive Hardware</a> •
   <a href="#-python-sdk-usage">Python SDK</a> •
   <a href="#-web-dashboard--rest-api">Web Dashboard</a> •
   <a href="#-docker-deployment">Docker</a> •
+  <a href="#-how-to-contribute">Contributing</a> •
+  <a href="#-acknowledgments--open-source-credits">Thanks & Credits</a> •
   <a href="#-license">License</a>
 </p>
 
@@ -40,7 +45,7 @@
 ╭─── [ SYSTEM HARDWARE & ADAPTIVE PROFILE ] ──────────────────── [ ● READY ] ╮
 │  RAM Capacity:    [███████████░] 7322 MB (7.15 GB) • Container Safe        │
 │  CPU Allocation:  [█████████░░░] 12.0 vCPU Cores • Real-Time Engine        │
-│  Active Encoder:  ⚡ libopenh264 (H.264 Zero-Lag Auto-Detected)            │
+│  Active Encoder:  ⚡ libopenh264 / libx264 (H.264 Zero-Lag Auto-Detected)   │
 │  Recommended:     💎 Full HD (1080p) (Adaptive Auto-Tuned)                 │
 │  Adaptive Guard:  🛡️  Auto-Downgrade Active (Watchdog: < 0.85x)            │
 │  Diagnostic Logs: 📄 logs/stream.log (Continuous Realtime)                 │
@@ -53,69 +58,75 @@
 
 ## 🌟 Key Features
 
-- **🚀 5 Powerful Streaming Modes**:
-  1. **Radio Looper**: Infinite video background loop with online YouTube audio stream or playlist. Supports **Random Song Shuffle** 🔀 or **Sequential Loop** 🔁.
-  2. **YouTube Video/Live Relay**: Directly restream any YouTube live broadcast or video with custom logo overlay and zero disk download footprint.
+- **🚀 6 Powerful Broadcast Modes**:
+  1. **Radio Looper (with TV Music Channel Card)**: Infinite background video loop with online YouTube audio streams or local playlists. Displays live Zee Music / MTV-style glassmorphic **"NOW PLAYING"** & **"UP NEXT"** on-screen lower-thirds. Supports **Random Song Shuffle** 🔀 or **Sequential Loop** 🔁.
+  2. **YouTube Video / Live Restream Relay**: Restream any YouTube live broadcast or video with custom logo overlay and zero local disk download footprint.
   3. **Custom Media Combiner**: Mix any remote or local video source with any custom audio source on the fly.
-  4. **Local Playlist 24/7 Looper**: Continuous, seamless looping through a folder of videos and audio tracks.
-  5. **Direct Stream Relay**: Restream HLS (`.m3u8`), RTMP, or RTSP camera feeds directly.
-- **🌐 Multi-Platform Broadcast**:
-  - Stream concurrently or independently to **YouTube Live**, **Facebook Live (RTMPS)**, **Twitch**, **Kick**, or any **Custom RTMP/RTMPS** destination.
+  4. **Local Playlist 24/7 Looper**: Seamless looping through entire directories of videos and audio tracks.
+  5. **Direct Stream Relay**: Direct restreaming of HLS (`.m3u8`), RTMP, or RTSP feeds.
+  6. **24/7 Live Breaking News Channel Studio**: Automated live TV news channel with live RSS news scraping (Google News, BBC, Reuters), an AI speech anchor (TTS), breaking news lower-third banners, and a live rolling news ticker.
+- **📺 Broadcast-Grade On-Screen Display (OSD)**:
+  - **Zee Music / MTV Music Card**: Glassmorphism lower-third displaying animated sound wave equalizers, track titles, and upcoming songs.
+  - **CNN / BBC Breaking News Lower-Third**: Bold red broadcast banner with live headlines, source attribution badges, and rolling ticker.
+  - **Scalable Watermark Logo**: Multi-position vector (SVG) or raster (PNG) brand overlay with adjustable alpha transparency.
 - **⚡ Direct YouTube Streaming without Disk Downloads**:
-  - Automatically resolves YouTube URLs on the fly using `yt-dlp` into high-quality direct HTTP/HLS streaming feeds (`googlevideo.com` / `.m3u8`). Zero hard disk wear, zero temporary download files.
-- **🛡️ Adaptive Hardware Engine (Runs from 500MB RAM & 0.1 vCPU to 16+ Cores)**:
-  - Automatically detects host and Docker cgroups memory and CPU limits.
-  - Active encoding watchdog (`speed < 0.85x`) automatically triggers profile auto-downgrades (1080p → 720p → 480p → 240p) to guarantee non-stop 24/7 uptime without crashes.
+  - Resolves YouTube URLs in real time via `yt-dlp` into high-quality direct HTTP/HLS streaming feeds (`googlevideo.com` / `.m3u8`). Zero hard disk wear, zero temporary download files.
+- **🛡️ Adaptive Hardware Engine (Runs on 500MB RAM VPS up to 32-Core Servers)**:
+  - Automatically measures host and Docker cgroups memory and CPU limits.
+  - Real-time encoding watchdog (`speed < 0.85x`) automatically triggers profile auto-downgrades (1080p → 720p → 480p → 240p) to prevent frame drops or stream disconnection.
 - **📄 Continuous Diagnostic Error Logging (`logs/stream.log`)**:
-  - Persistent, thread-safe, auto-rotating log file captures every streamer event, YouTube extraction warning, and raw FFmpeg stderr output for effortless troubleshooting.
-- **🎛️ Cyberpunk Terminal Studio & Live Controller**:
+  - Persistent, thread-safe, auto-rotating log file captures every streamer event, YouTube extraction warning, and raw FFmpeg stderr output for effortless debugging.
+- **🎛️ Cyberpunk Terminal Studio & Live Hotkey Controller**:
   - Interactive ASCII TUI dashboard with live telemetry, elapsed time, current song metadata, and instant hotkeys (`[N]` Next Song, `[P]` Toggle Shuffle, `[D]` Force Downgrade, `[S]` Pause/Resume, `[Q]` Clean Exit).
-- **📦 Dual Distribution: Pip Package & CLI Tool**:
-  - Install as a global CLI tool or import as a Python SDK (`from magicstream import LiveStreamManager`).
+- **🌐 Multi-Platform Broadcast**:
+  - Broadcast concurrently or independently to **YouTube Live**, **Facebook Live (RTMPS)**, **Twitch**, **Kick**, or any **Custom RTMP/RTMPS** destination.
+- **📦 Dual Distribution: Pip Package & Standalone CLI**:
+  - Install as a global console utility or import as a Python SDK (`from magicstream import LiveStreamManager`).
 
 ---
 
 ## ⚡ Quickstart Guide
 
-### 1. Prerequisites
-- **Python**: Version 3.9+ (`python3 --version`)
-- **FFmpeg**: Installed on system (`ffmpeg -version`)
+### 1. System Prerequisites
+- **Python**: Version 3.9 or higher (`python3 --version`)
+- **FFmpeg**: Installed with H.264 support (`ffmpeg -version`)
+- **librsvg**: For real-time SVG vector rendering onto video streams
 
 ```bash
 # Ubuntu / Debian
-sudo apt update && sudo apt install -y ffmpeg librsvg2-bin
+sudo apt update && sudo apt install -y ffmpeg librsvg2-bin python3-pip
 
 # Fedora / RHEL
-sudo dnf install -y ffmpeg librsvg2-tools
+sudo dnf install -y ffmpeg librsvg2-tools python3-pip
 
 # Arch Linux / Manjaro
-sudo pacman -S ffmpeg librsvg
+sudo pacman -S ffmpeg librsvg python-pip
 
 # macOS (Homebrew)
-brew install ffmpeg librsvg
+brew install ffmpeg librsvg python
 ```
 
 ### 2. Installation
 
-You can install MagicStream directly from source as a pip package:
+Clone from GitHub and install as a pip package:
 
 ```bash
-git clone https://github.com/shubhamkumarjha/YT_LIVE.git
-cd YT_LIVE
+git clone https://github.com/ShUBHaMJHA9/magicstream.git
+cd magicstream
 
-# Install as editable pip package
+# Install in editable development mode
 pip install -e .
 ```
 
 This registers two global console commands:
-- **`magicstream`**: The full CLI engine, daemon runner, and API server.
+- **`magicstream`**: The core streaming daemon, CLI launcher, and API server.
 - **`magicstream-studio`**: The interactive cyberpunk terminal broadcast studio.
 
 ---
 
 ## 🎛️ Cyberpunk Terminal Studio
 
-To launch the animated, colorful Terminal Studio with hotkey controls:
+To launch the animated, colorful Terminal Studio with interactive hotkeys:
 
 ```bash
 magicstream-studio
@@ -123,66 +134,146 @@ magicstream-studio
 magicstream -t
 ```
 
-### Studio Hotkeys:
-| Hotkey | Action |
-| :---: | :--- |
-| **`[N]`** | Skip to next song / track immediately |
-| **`[P]`** | Toggle playback order between **Random Shuffle** 🔀 and **Sequential Loop** 🔁 |
-| **`[D]`** | Force downgrade active quality profile by 1 tier (e.g. 1080p → 720p) |
-| **`[S]`** | Pause / Resume live broadcast cleanly |
-| **`[Q]`** | Clean shutdown (gracefully terminates FFmpeg and child threads) |
+### Live Studio Hotkeys:
+| Hotkey | Action | Description |
+| :---: | :--- | :--- |
+| **`[N]`** | Next Song / Track | Instantly skips to the next track in the playlist |
+| **`[P]`** | Toggle Playback Mode | Switches between **Random Shuffle** 🔀 and **Sequential Loop** 🔁 |
+| **`[D]`** | Dynamic Downgrade | Drops current stream resolution by one tier (e.g. 1080p → 720p) |
+| **`[S]`** | Pause / Resume | Safely pauses the live broadcast without crashing |
+| **`[Q]`** | Clean Shutdown | Gracefully terminates FFmpeg and exits all worker threads |
 
 ---
 
-## 🎮 CLI Usage & Streaming Modes
+## 📺 Streaming Modes
+
+### Mode 1: 24/7 Lo-Fi Radio Looper + Music Channel Card
+Loops a background video (or cycles through a directory of video clips) while streaming YouTube tracks or local audio files. Features an on-screen glassmorphic card showing **NOW PLAYING** and **UP NEXT**:
 
 ```bash
-# Interactive Setup Wizard
+# Interactive setup wizard
 magicstream -i
 
-# Mode 1: Radio Looper (Looping background video + YouTube audio playlist)
+# Run Mode 1 directly with custom stream key
 magicstream --mode 1 --platform youtube --stream-key "xxxx-xxxx-xxxx-xxxx"
 
-# Mode 1 with Random Song Shuffle
+# Enable Random Song Shuffle with Random Video Clips
 magicstream --mode 1 --playback-order random --video-selection random
+```
 
-# Mode 2: YouTube Video / Live Restream Relay
+### Mode 2: YouTube Video / Live Restream Relay
+Directly relays any existing YouTube live stream or video without downloading it to disk:
+
+```bash
 magicstream --mode 2 --yt-source "https://www.youtube.com/watch?v=jfKfPfyJRdk"
+```
 
-# Mode 3: Custom Media Combiner
-magicstream --mode 3 --video "https://example.com/video.mp4" --audio "https://example.com/stream.mp3"
+### Mode 3: Custom Media Combiner
+Combines any video source (local file or direct URL) with any audio source:
 
-# Mode 4: Local Playlist 24/7 Looper
+```bash
+magicstream --mode 3 --video "video/background.mp4" --audio "https://example.com/stream.mp3"
+```
+
+### Mode 4: Local Media Playlist Looper
+Loops through a folder of local video clips and audio files:
+
+```bash
 magicstream --mode 4
+```
 
-# Mode 5: Direct Stream Relay (HLS/m3u8/RTMP)
+### Mode 5: Direct Stream Relay
+Restreams live HLS (`.m3u8`), RTMP, or RTSP feeds:
+
+```bash
 magicstream --mode 5 --video "https://example.com/live/playlist.m3u8"
 ```
+
+### Mode 6: 24/7 Live Breaking News Channel Studio
+An automated, round-the-clock television news channel. Scrapes live breaking headlines from free, open RSS feeds (Google News, BBC, Reuters, Tech), generates an AI speech bulletin (TTS), renders a dynamic CNN/BBC-style red lower-third card, and streams continuously:
+
+```bash
+# Launch News Channel (Google News World headlines + AI voice anchor)
+magicstream --mode 6
+
+# News mode with specific category
+magicstream --mode 6 --category technology
+```
+
+---
+
+## 🎨 On-Screen Display & TV Graphics
+
+MagicStream features real-time vector compositing via FFmpeg's `librsvg` filter, eliminating the need for expensive GPU rendering pipelines.
+
+### 1. MTV / Zee Music "Now Playing" Lower-Third Card
+- Displays in bottom-left corner of the broadcast.
+- Includes animated audio equalizer bars, current song title, upcoming track name, and glowing channel badge.
+- Automatically generated and updated as each new song starts.
+
+### 2. CNN / BBC Breaking News Lower-Third Banner
+- Full-width broadcast lower-third in high-impact broadcast red.
+- Displays `🔴 BREAKING NEWS`, news source badge, clean headline typography, and a scrolling headline ticker.
+
+### 3. Corner Watermark Logo
+- Vector SVG or high-resolution PNG overlay.
+- Configurable position (`top-right`, `top-left`, `bottom-right`, `bottom-left`), margins, scaling, and opacity.
+
+---
+
+## 🏗️ Architecture & Module Reference
+
+MagicStream is engineered as a modular, production-ready live streaming framework:
+
+```
+magicstream/
+├── __init__.py           # Package exports & version metadata
+├── cli.py                # Command-line entrypoints & argument parser
+├── runner.py             # Cyberpunk Terminal Studio TUI & interactive wizard
+├── streamer.py           # LiveStreamManager: central orchestration & stream loops
+├── ffmpeg_builder.py     # Hardware-adaptive FFmpeg command & filtergraph builder
+├── extractor.py          # StreamUrlExtractor: zero-disk yt-dlp direct stream resolver
+├── overlay_generator.py  # OverlayGenerator: vector SVG music cards & news graphics
+├── news_engine.py        # NewsFetcher & NewsBroadcastStudio: RSS & TTS news pipeline
+├── hardware.py           # HardwareDetector: cgroups & hardware auto-tuning
+├── config.py             # ConfigManager: YAML, env, and CLI configuration cascade
+├── logger.py             # StreamLogger: thread-safe auto-rotating diagnostic logger
+├── api.py                # FastAPI REST controller & embedded HTML5 dashboard
+└── ui.py                 # ANSI color palettes, ASCII banners, and UI components
+```
+
+### Module Breakdown:
+
+| Module | Core Classes | Responsibility |
+| :--- | :--- | :--- |
+| **`magicstream.streamer`** | `LiveStreamManager` | Manages active stream processes, thread-safe start/stop/pause/skip cycles, multi-mode loops, and auto-reconnect logic. |
+| **`magicstream.ffmpeg_builder`** | `FFmpegBuilder` | Constructs hardware-optimized FFmpeg commands, encoder detection (libx264, h264_nvenc, h264_vaapi), and multi-input overlay filtergraphs. |
+| **`magicstream.extractor`** | `StreamUrlExtractor` | Uses `yt-dlp` to extract direct streaming video/audio URLs on the fly with smart metadata caching. |
+| **`magicstream.overlay_generator`** | `OverlayGenerator` | Generates SVG broadcast overlays: Zee Music cards, Breaking News lower-thirds, and equalizer badges. |
+| **`magicstream.news_engine`** | `NewsFetcher`, `NewsBroadcastStudio` | Zero-API RSS headline scraper and Google Text-to-Speech (`gTTS`) audio bulletin generator. |
+| **`magicstream.hardware`** | `HardwareDetector` | Detects container memory limits, vCPU core allocations, and calculates adaptive quality profiles. |
+| **`magicstream.runner`** | `MagicStreamRunner`, `NonBlockingInput` | Cyberpunk terminal dashboard, live telemetry refresh loop, and non-blocking Linux terminal key listener. |
+| **`magicstream.config`** | `ConfigManager` | Deep-merging configuration loader supporting CLI args, environment variables, YAML files, and fallbacks. |
+| **`magicstream.logger`** | `StreamLogger` | Continuous diagnostic logging into `logs/stream.log` with auto-rotation (10MB) and FFmpeg crash dumps. |
+| **`magicstream.api`** | `create_api_app` | High-performance FastAPI application serving REST endpoints and an embedded responsive web dashboard. |
 
 ---
 
 ## 📄 Continuous Error Logging
 
-MagicStream writes all runtime logs and raw FFmpeg error diagnostics continuously into:
+MagicStream logs all runtime events, stream state changes, and raw FFmpeg errors continuously into:
 ```
 logs/stream.log
 ```
-- **Auto-Rotation**: Log files automatically rotate at 10MB to prevent filling up disk space.
-- **Error Dumps**: Whenever a streaming process exits unexpectedly, MagicStream extracts and logs the last 15 lines of FFmpeg stderr to instantly highlight root causes (e.g. invalid stream key, network drop, codec mismatch).
-- **Web Download**: Access raw logs from the web dashboard at `GET /logs/file` or inspect live events at `GET /logs`.
-
-To specify a custom log file or disable file logging:
-```bash
-magicstream --log-file /var/log/my_stream.log
-# or disable:
-magicstream --no-log
-```
+- **Auto-Rotation**: Log files automatically rotate at 10MB to prevent disk exhaustion.
+- **Raw FFmpeg Error Dumps**: If FFmpeg exits unexpectedly, the last 15 lines of stderr are captured and written to `logs/stream.log` to immediately identify the root cause (e.g., bad stream key, network drop, incompatible audio codec).
+- **Web Download**: Access raw logs from the web dashboard at `GET /logs/file` or inspect recent events via `GET /logs`.
 
 ---
 
 ## 🛡️ Adaptive Hardware Engine
 
-MagicStream is designed to run seamlessly on machines from **500MB RAM & 0.1 vCPU VPS** up to dedicated high-end broadcast servers.
+MagicStream is specifically designed to run reliably on resource-constrained cloud servers:
 
 | Profile | Target Hardware | Resolution | FPS | Bitrate | Audio |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -191,23 +282,23 @@ MagicStream is designed to run seamlessly on machines from **500MB RAM & 0.1 vCP
 | **`medium`** | 2GB–4GB RAM, 2 vCPUs | 1280x720 | 30 fps | 2500 kbps | 128 kbps |
 | **`high`** | 4GB+ RAM, 4+ vCPUs or GPU | 1920x1080 | 30 fps | 4500 kbps | 160 kbps |
 
-*Note: Output encoding strictly follows hardware profile detection, ensuring low-spec devices never overload.*
+*Note: The dynamic watchdog monitors encoding speed. If speed drops below 0.85x in real time, MagicStream automatically drops down one profile tier to keep the broadcast live without stutter.*
 
 ---
 
 ## 🐍 Python SDK Usage
 
-You can use MagicStream directly inside your Python applications:
+Import and control MagicStream inside your own Python projects:
 
 ```python
 from magicstream import LiveStreamManager, ConfigManager, HardwareDetector
 
 # Inspect system hardware capabilities
 hw = HardwareDetector.get_system_summary()
-print(f"Detected RAM: {hw['ram_mb']} MB | Cores: {hw['cpu_cores']} | Profile: {hw['profile_name']}")
+print(f"RAM: {hw['ram_mb']} MB | vCPUs: {hw['cpu_cores']} | Profile: {hw['profile_name']}")
 
 # Load and customize configuration
-config = ConfigManager()
+config = ConfigManager("config.yaml")
 config.config["destination"]["platform"] = "youtube"
 config.config["destination"]["stream_key"] = "xxxx-xxxx-xxxx-xxxx"
 config.config["streaming"]["mode"] = "mode_1_radio"
@@ -218,20 +309,20 @@ streamer.start()
 
 # Query live status
 status = streamer.get_status()
-print(f"Broadcasting: {status['is_running']} | Profile: {status['active_profile']}")
+print(f"Live: {status['is_running']} | Profile: {status['active_profile']}")
 
-# Clean shutdown
-streamer.stop()
+# Graceful shutdown
+# streamer.stop()
 ```
 
 ---
 
 ## 🖥️ Web Dashboard & REST API
 
-MagicStream includes a built-in FastAPI web controller:
+Control your live stream from any browser or HTTP client:
 
 ```bash
-# Start API server alongside live stream (default port 8000)
+# Start API server alongside live stream (port 8000)
 magicstream --port 8000
 
 # Start API server only
@@ -246,31 +337,82 @@ Interactive Swagger Docs: **`http://localhost:8000/docs`**
 | `GET` | `/` | Responsive Web Dashboard with live status and controls |
 | `GET` | `/status` | Real-time JSON telemetry (uptime, active mode, hardware, PID) |
 | `GET` | `/hardware` | System RAM, CPU cores, and profile report |
-| `POST` | `/start` | Start live streaming with optional overrides |
-| `POST` | `/stop` | Stop live streaming immediately |
-| `POST` | `/skip` | Skip to next track in playlist |
-| `POST` | `/set-quality` | Dynamically change active quality profile |
-| `GET` | `/logs` | Fetch the last 100 log lines |
+| `POST` | `/start` | Start live streaming with optional config overrides |
+| `POST` | `/stop` | Stop live streaming cleanly |
+| `POST` | `/skip` | Skip to the next track in the playlist |
+| `POST` | `/set-quality` | Dynamically switch quality profiles |
+| `GET` | `/logs` | Fetch the last 100 log lines in JSON format |
 | `GET` | `/logs/file` | Download full persistent `stream.log` diagnostic file |
 
 ---
 
 ## 🐳 Docker Deployment
 
-Deploy with Docker Compose:
+Run MagicStream inside a containerized environment using Docker Compose:
 
 ```bash
+# Build and run in detached mode
 docker compose up -d
-```
 
-View real-time logs:
-```bash
+# View live broadcast logs
 docker compose logs -f
 ```
 
 ---
 
-## 📄 License & Credits
+## 🤝 How to Contribute
 
-Crafted with ❤️ by **[Shubham Kumar Jha](https://github.com/shubhamkumarjha)**.  
-Released under the **[MIT License](LICENSE)**.
+We welcome contributions from developers, creators, and streamers worldwide! Whether it is adding new broadcast modes, optimizing FFmpeg filtergraphs, improving the web UI, or fixing bugs:
+
+1. **Fork the Repository**:
+   Click the **Fork** button at the top right of [https://github.com/ShUBHaMJHA9/magicstream](https://github.com/ShUBHaMJHA9/magicstream).
+
+2. **Clone your Fork**:
+   ```bash
+   git clone https://github.com/<your-username>/magicstream.git
+   cd magicstream
+   ```
+
+3. **Create a Feature Branch**:
+   ```bash
+   git checkout -b feature/amazing-new-feature
+   ```
+
+4. **Install in Development Mode**:
+   ```bash
+   pip install -e .
+   ```
+
+5. **Commit your Changes**:
+   ```bash
+   git commit -m "feat: add amazing new feature"
+   ```
+
+6. **Push to your Branch & Open a Pull Request**:
+   ```bash
+   git push origin feature/amazing-new-feature
+   ```
+   Open a PR against the `main` branch with a clear description of your changes.
+
+---
+
+## 💖 Acknowledgments & Open-Source Credits
+
+MagicStream stands on the shoulders of giants. We express our deepest gratitude and appreciation to the authors, maintainers, and communities of the following incredible open-source projects:
+
+- **[FFmpeg](https://ffmpeg.org/)** — The undisputed gold standard of multimedia processing. Without FFmpeg's unparalleled transcoding, filtering, and RTMP streaming capabilities, this project would not be possible.
+- **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** — The extraordinary, robust media extraction library that allows MagicStream to resolve online YouTube streams in real time with zero disk footprint.
+- **[FastAPI](https://fastapi.tiangolo.com/) & [Uvicorn](https://www.uvicorn.org/)** — For powering our ultra-fast, modern asynchronous REST API and Web Dashboard controller with automatic OpenAPI documentation.
+- **[gTTS (Google Text-to-Speech)](https://github.com/pndurette/gTTS)** — For enabling our automated 24/7 AI Breaking News Channel to synthesize realistic spoken news bulletins without requiring paid third-party voice APIs.
+- **[librsvg](https://wiki.gnome.org/Projects/LibRsvg)** — For providing lightning-fast SVG vector rendering directly within FFmpeg's video filtergraph, enabling beautiful dynamic glassmorphic music cards and breaking news lower-thirds.
+- **[Pydantic](https://docs.pydantic.dev/)** — For robust, elegant data validation and schema management.
+- **[PyYAML](https://pyyaml.org/)** — For reliable, clean configuration file parsing.
+- **[psutil](https://github.com/giampaolo/psutil)** — For cross-platform hardware, memory, and CPU utilization monitoring.
+- **The Global Open-Source Community** — For continuous inspiration, knowledge sharing, and dedication to free software.
+
+---
+
+## 📄 License
+
+Crafted with ❤️ by **[Shubham Kumar Jha](https://github.com/ShUBHaMJHA9)**.  
+Released under the **[MIT License](LICENSE)**. Feel free to use, modify, and distribute for personal or commercial broadcast projects!

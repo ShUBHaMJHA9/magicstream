@@ -24,10 +24,10 @@ setup(
     description="Professional 24/7 Multi-Platform Live Broadcast Engine with Adaptive Hardware Downgrading, Watermark Overlays, and Multi-Destination RTMP.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/shubhamkumarjha/magicstream",
+    url="https://github.com/ShUBHaMJHA9/magicstream",
     project_urls={
-        "Bug Tracker": "https://github.com/shubhamkumarjha/magicstream/issues",
-        "Source Code": "https://github.com/shubhamkumarjha/magicstream",
+        "Bug Tracker": "https://github.com/ShUBHaMJHA9/magicstream/issues",
+        "Source Code": "https://github.com/ShUBHaMJHA9/magicstream",
     },
     packages=find_packages(include=["magicstream", "magicstream.*", "core", "core.*"]),
     classifiers=[

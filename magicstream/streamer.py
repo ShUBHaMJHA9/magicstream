@@ -385,6 +385,8 @@ class LiveStreamManager:
                     self._stream_mode_4_local_playlist(destination_url)
                 elif self.current_mode == "mode_5_direct_relay":
                     self._stream_mode_5_direct_relay(destination_url)
+                elif self.current_mode == "mode_6_news":
+                    self._stream_mode_6_news(destination_url)
                 else:
                     self.log(f"Unknown streaming mode: {self.current_mode}")
                     self.stop()
@@ -488,13 +490,34 @@ class LiveStreamManager:
                 self.log(f"Could not extract audio for {audio_item}. Error: {err_detail}. Skipping to next track...", level="ERROR")
                 continue
 
-            self.current_media_title = audio_item
+            track_title = self.extractor.get_title(audio_item) or os.path.basename(audio_item)
+            next_idx = (idx + 1) % len(items_to_play)
+            next_audio = items_to_play[next_idx]
+            next_track_title = self.extractor.get_title(next_audio) or os.path.basename(next_audio)
+
+            banner_path = None
+            overlay_cfg = self.config_manager.get("overlay", {})
+            if overlay_cfg.get("now_playing", {}).get("enable", True):
+                try:
+                    from magicstream.overlay_generator import OverlayGenerator
+                    ch_name = overlay_cfg.get("now_playing", {}).get("channel_name", "MAGICSTREAM LIVE")
+                    banner_path = OverlayGenerator.generate_music_card(
+                        current_title=track_title,
+                        next_title=next_track_title,
+                        output_path="overlay/now_playing.svg",
+                        channel_name=ch_name,
+                    )
+                except Exception as e:
+                    self.log(f"Notice: Could not generate music card: {e}", level="WARNING")
+
+            self.current_media_title = track_title
             cmd = self.ffmpeg_builder.build_radio_command(
                 video_path=active_video_resolved,
                 audio_url=audio_stream_url,
                 destination_url=destination_url,
                 loop_video=True,
                 profile_override=self.active_profile_name,
+                banner_path=banner_path,
             )
             self._execute_ffmpeg(cmd)
 
@@ -670,4 +693,43 @@ class LiveStreamManager:
             profile_override=self.active_profile_name,
         )
         self._execute_ffmpeg(cmd)
+
+    def _stream_mode_6_news(self, destination_url: str) -> None:
+        """Mode 6: 24/7 Live Breaking News Channel Studio with AI speech anchor & live lower-third ticker."""
+        from magicstream.news_engine import NewsBroadcastStudio
+        studio = NewsBroadcastStudio(self.config_manager.config)
+        news_cfg = self.config_manager.get("streaming", {}).get("mode_6_news", {})
+        video_path = news_cfg.get("video_path", "video/vid.mp4")
+
+        if not os.path.exists(video_path) and os.path.exists("video"):
+            files = [os.path.join("video", f) for f in os.listdir("video") if f.endswith((".mp4", ".mkv", ".mov", ".webm"))]
+            if files:
+                video_path = files[0]
+
+        story_idx = 0
+        while not self.stop_requested and self.is_running:
+            try:
+                bulletin = studio.generate_current_bulletin(story_index=story_idx)
+                headline = bulletin["headline"]
+                source = bulletin["source"]
+                audio_path = bulletin["audio_path"]
+                svg_path = bulletin["svg_path"]
+
+                self.current_media_title = f"[BREAKING NEWS] {headline} ({source})"
+                self.current_track_index = bulletin["story_index"]
+                self.total_tracks = bulletin["total_stories"]
+                self.log(f"Broadcasting News Bulletin [{self.current_track_index}/{self.total_tracks}]: {headline} - {source}")
+
+                cmd = self.ffmpeg_builder.build_news_command(
+                    video_path=video_path,
+                    audio_path=audio_path,
+                    destination_url=destination_url,
+                    banner_path=svg_path,
+                    profile_override=self.active_profile_name,
+                )
+                self._execute_ffmpeg(cmd)
+                story_idx += 1
+            except Exception as e:
+                self.log(f"News studio engine error: {e}", level="ERROR")
+                time.sleep(5)
 

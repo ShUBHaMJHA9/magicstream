@@ -1,7 +1,8 @@
 # ==============================================================================
-# YT_LIVE Production Dependencies
+# MagicStream Production Dependencies
 # Author: Shubham Kumar Jha
 # License: MIT
+# Repository: https://github.com/ShUBHaMJHA9/magicstream
 # ==============================================================================
 
 # Core Media Extraction & Streaming
@@ -20,5 +21,9 @@ python-dotenv>=1.0.1
 requests>=2.31.0
 tqdm>=4.66.2
 
+# Text-to-Speech & Speech Synthesis
+gTTS>=2.5.0
+
 # Background Scheduler for Automated Tasks
 apscheduler>=3.10.4
+

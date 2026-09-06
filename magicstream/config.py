@@ -60,6 +60,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "input_stream_url": "",
             "re_encode": True,
         },
+        "mode_6_news": {
+            "category": "world",
+            "language": "en",
+            "tts_enabled": True,
+            "ambient_audio": "audio/news_ambient.mp3",
+            "video_path": "video/vid.mp4",
+        },
     },
     "overlay": {
         "enable": True,
@@ -69,6 +76,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "margin_y": 24,
         "scale_width": 200,
         "opacity": 0.92,
+        "now_playing": {
+            "enable": True,
+            "channel_name": "MAGICSTREAM LIVE",
+            "position": "bottom-left",
+        },
     },
     "encoding": {
         "quality_profile": "auto",

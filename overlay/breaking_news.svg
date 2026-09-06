@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="180" viewBox="0 0 1280 180">
+  <defs>
+    <linearGradient id="redBadge" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b91c1c"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="headlineBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#111827" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="tickerBg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.7"/>
+    </filter>
+  </defs>
+
+  <!-- Main Headline Box -->
+  <rect x="20" y="36" width="1240" height="88" rx="10" ry="10" fill="url(#headlineBg)" stroke="#334155" stroke-width="1.5" filter="url(#shadow)"/>
+
+  <!-- Top Red BREAKING NEWS Badge -->
+  <path d="M 20 6 L 270 6 L 250 38 L 20 38 Z" fill="url(#redBadge)"/>
+  <circle cx="42" cy="22" r="5" fill="#ffffff"/>
+  <text x="56" y="27" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="900" fill="#ffffff" letter-spacing="1.5">
+    BREAKING NEWS
+  </text>
+
+  <!-- Source Badge (Right) -->
+  <rect x="1080" y="46" width="160" height="24" rx="6" ry="6" fill="#1e293b"/>
+  <text x="1160" y="63" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="700" fill="#38bdf8" text-anchor="middle">
+    SOURCE: The Washington Post
+  </text>
+
+  <!-- Headline Text -->
+  <text x="44" y="92" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="800" fill="#ffffff">
+    U.S. military says it hit 3 Iranian tankers after Navy ships t...
+  </text>
+
+  <!-- Bottom Ticker Bar -->
+  <rect x="20" y="128" width="1240" height="38" rx="6" ry="6" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+  <rect x="20" y="128" width="110" height="38" rx="6" ry="6" fill="url(#tickerBg)"/>
+  <text x="75" y="152" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="900" fill="#000000" text-anchor="middle" letter-spacing="1">
+    UPDATES
+  </text>
+  <text x="145" y="152" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#f1f5f9">
+    Russia’s Putin and US envoys discuss Trump proposal to end Ukraine war   •   Nepal Floods Buried a House. T...
+  </text>
+</svg>

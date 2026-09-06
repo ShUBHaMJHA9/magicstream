@@ -4,7 +4,7 @@
 MagicStream CLI: Professional 24/7 Multi-Platform Live Broadcast Engine
 Author: Shubham Kumar Jha
 License: MIT
-Repository: https://github.com/shubhamkumarjha/magicstream
+Repository: https://github.com/ShUBHaMJHA9/magicstream
 ================================================================================
 Command-line interface and orchestrator for MagicStream.
 """
@@ -61,7 +61,7 @@ def parse_arguments() -> argparse.Namespace:
 
     parser.add_argument(
         "--mode", "-m",
-        choices=["1", "2", "3", "4", "5", "mode_1_radio", "mode_2_yt_relay", "mode_3_custom", "mode_4_local_playlist", "mode_5_direct_relay"],
+        choices=["1", "2", "3", "4", "5", "6", "mode_1_radio", "mode_2_yt_relay", "mode_3_custom", "mode_4_local_playlist", "mode_5_direct_relay", "mode_6_news"],
         default=None,
         help=(
             "Streaming Mode Selection:\n"
@@ -69,7 +69,8 @@ def parse_arguments() -> argparse.Namespace:
             "  2 / mode_2_yt_relay      : Restream YouTube live stream or video\n"
             "  3 / mode_3_custom        : Custom video link/file + custom audio\n"
             "  4 / mode_4_local_playlist: Continuous 24/7 loop of local video/audio files\n"
-            "  5 / mode_5_direct_relay  : Direct HLS/m3u8/RTMP stream restreamer"
+            "  5 / mode_5_direct_relay  : Direct HLS/m3u8/RTMP stream restreamer\n"
+            "  6 / mode_6_news          : 24/7 Live Breaking News Channel (AI Speech Anchor + Live Ticker)"
         )
     )
 
@@ -214,6 +215,7 @@ def normalize_mode(mode_arg: Optional[str]) -> Optional[str]:
         "3": "mode_3_custom",
         "4": "mode_4_local_playlist",
         "5": "mode_5_direct_relay",
+        "6": "mode_6_news",
     }
     return mode_map.get(mode_arg, mode_arg)
 
@@ -234,13 +236,14 @@ def run_interactive_menu(config_manager: ConfigManager, streamer: LiveStreamMana
     print(f"  {CYAN}[3]{RESET} Mode 3: Custom Media (Custom video URL/file + Custom audio URL/file)")
     print(f"  {CYAN}[4]{RESET} Mode 4: Local Playlist 24/7 (Continuous folder-based loop of local clips)")
     print(f"  {CYAN}[5]{RESET} Mode 5: Direct Stream Relay (HLS/m3u8/RTMP restreamer to target)")
-    print(f"  {CYAN}[6]{RESET} Web Dashboard & API Server Only")
-    print(f"  {CYAN}[7]{RESET} Hardware & Resource Capability Report")
+    print(f"  {CYAN}[6]{RESET} Mode 6: 24/7 Live Breaking News Channel (AI Speech Anchor + Live Ticker)")
+    print(f"  {CYAN}[7]{RESET} Web Dashboard & API Server Only")
+    print(f"  {CYAN}[8]{RESET} Hardware & Resource Capability Report")
     print(f"  {CYAN}[0]{RESET} Exit")
     print(f"{DIM}{'-' * 76}{RESET}")
 
     try:
-        choice = input("Enter choice [T, 1-7, 0]: ").strip().upper()
+        choice = input("Enter choice [T, 1-8, 0]: ").strip().upper()
     except (KeyboardInterrupt, EOFError):
         print("\nExiting.")
         sys.exit(0)
@@ -272,8 +275,13 @@ def run_interactive_menu(config_manager: ConfigManager, streamer: LiveStreamMana
             config_manager.config["streaming"]["mode_5_direct_relay"]["input_stream_url"] = stream_url
         return "mode_5_direct_relay", False
     elif choice == "6":
-        return None, True
+        cat = input("Enter News Category [world, india, technology, business, bbc] (default: world): ").strip()
+        if cat:
+            config_manager.config["streaming"]["mode_6_news"]["category"] = cat
+        return "mode_6_news", False
     elif choice == "7":
+        return None, True
+    elif choice == "8":
         print("\n--- Hardware Resource Profile ---")
         for k, v in hw.items():
             print(f"  {k}: {v}")

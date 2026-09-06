@@ -39,5 +39,5 @@ overlay:
 ## Replacing with Your Own Logo
 Simply drop your logo file into this `logo/` folder (e.g. `logo/my_channel.svg` or `logo/brand.png`) and update the path in `config.yaml` or run with:
 ```bash
-python main.py --logo logo/brand.png --logo-pos top-right
+magicstream --logo logo/brand.png --logo-pos top-right
 ```
