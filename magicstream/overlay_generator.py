@@ -4,9 +4,13 @@ MagicStream Dynamic Broadcast Overlay Generator
 Author: Shubham Kumar Jha
 License: MIT
 ================================================================================
-Generates broadcast-grade on-screen SVG graphics on the fly:
-1. Zee Music / MTV style "Now Playing" & "Up Next" lower-third cards.
+Generates broadcast-grade on-screen graphics on the fly:
+1. Zee Music / MTV style "Now Playing" & "Up Next" lower-third cards (SVG).
 2. CNN / BBC style "BREAKING NEWS" lower-third banners & scrolling tickers.
+3. Over-The-Shoulder (OTS) news media window with real story photographs.
+
+PNG pre-rendering uses Pillow (PIL) for reliable compositing — FFmpeg's librsvg
+silently drops embedded base64 images, so we composite the photo directly.
 """
 
 import base64
@@ -15,6 +19,7 @@ import subprocess
 import time
 import xml.sax.saxutils as saxutils
 from typing import List, Optional
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 
 def escape_xml(s: str) -> str:
@@ -22,8 +27,36 @@ def escape_xml(s: str) -> str:
     return saxutils.escape(str(s or "").strip())
 
 
+def _truncate_at_word(text: str, max_chars: int) -> str:
+    """Truncates text at the last word boundary before max_chars."""
+    if len(text) <= max_chars:
+        return text
+    truncated = text[:max_chars]
+    # Find the last space to break at a word boundary
+    last_space = truncated.rfind(" ")
+    if last_space > max_chars // 2:
+        return truncated[:last_space] + "..."
+    return truncated + "..."
+
+
+def _wrap_text(text: str, max_chars: int) -> List[str]:
+    """Wraps text into lines at word boundaries."""
+    words = text.split()
+    lines = []
+    current_line = ""
+    for word in words:
+        if current_line and len(current_line) + 1 + len(word) > max_chars:
+            lines.append(current_line)
+            current_line = word
+        else:
+            current_line = f"{current_line} {word}" if current_line else word
+    if current_line:
+        lines.append(current_line)
+    return lines
+
+
 class OverlayGenerator:
-    """Generates dynamic, real-time SVG broadcast overlays for live streams."""
+    """Generates dynamic, real-time broadcast overlays for live streams."""
 
     @staticmethod
     def generate_music_card(
@@ -112,6 +145,233 @@ class OverlayGenerator:
         return output_path
 
     @staticmethod
+    def _render_news_overlay_png(
+        headline: str,
+        category: str,
+        source: str,
+        ticker_items: Optional[List[str]],
+        image_path: Optional[str],
+        topic: str,
+        output_path: str,
+    ) -> Optional[str]:
+        """
+        Renders the TV broadcast overlay as a transparent 1280x720 PNG using Pillow.
+        This bypasses FFmpeg's librsvg which silently drops base64 images.
+        Composites the real news story photograph directly via PIL.
+        """
+        W, H = 1280, 720
+        img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+
+        # Try to load a TrueType font, fall back to default
+        try:
+            font_lg = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
+            font_md = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 14)
+            font_sm = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11)
+            font_xs = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 9)
+            font_cat = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 11)
+            font_headline = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 26)
+            font_ticker = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 13)
+        except (OSError, IOError):
+            font_lg = ImageFont.load_default()
+            font_md = font_lg
+            font_sm = font_lg
+            font_xs = font_lg
+            font_cat = font_lg
+            font_headline = font_lg
+            font_ticker = font_lg
+
+        # Map publisher to authentic TV brand color
+        src_upper = source.upper()
+        if "BBC" in src_upper:
+            source_bg = (187, 25, 25)
+        elif "WASHINGTON POST" in src_upper:
+            source_bg = (15, 23, 42)
+        elif "REUTERS" in src_upper:
+            source_bg = (234, 88, 12)
+        elif "AL JAZEERA" in src_upper or "ALJAZEERA" in src_upper:
+            source_bg = (194, 65, 12)
+        elif "CNN" in src_upper:
+            source_bg = (185, 28, 28)
+        elif "FOX" in src_upper:
+            source_bg = (30, 58, 138)
+        elif "NDTV" in src_upper:
+            source_bg = (153, 27, 27)
+        elif "TIMES OF INDIA" in src_upper:
+            source_bg = (180, 83, 9)
+        else:
+            source_bg = (3, 105, 161)
+
+        # ═══════════════════════════════════════════════
+        # TOP-RIGHT: OTS NEWS MEDIA WINDOW (510x310 @ 730,42)
+        # ═══════════════════════════════════════════════
+        ots_x, ots_y = 730, 42
+        ots_w, ots_h = 510, 310
+
+        # OTS glass panel background
+        ots_panel = Image.new("RGBA", (ots_w, ots_h), (5, 10, 20, 240))
+        ots_draw = ImageDraw.Draw(ots_panel)
+        ots_draw.rounded_rectangle((0, 0, ots_w - 1, ots_h - 1), radius=14, outline=(0, 240, 255, 216), width=2)
+
+        # Corner brackets
+        for bx, by in [(12, 4), (ots_w - 12, 4), (12, ots_h - 6), (ots_w - 12, ots_h - 6)]:
+            ots_draw.rectangle((bx - 4, by - 1, bx + 4, by + 1), fill=(0, 240, 255, 180))
+            ots_draw.rectangle((bx - 1, by - 4, bx + 1, by + 4), fill=(0, 240, 255, 180))
+
+        # Category ribbon (top-left angled)
+        ots_draw.polygon([(0, 0), (260, 0), (235, 30), (0, 30)], fill=(220, 38, 38, 255))
+        cat_text = f"🔴 {category.upper()[:22]}"
+        ots_draw.text((34, 8), cat_text, fill=(255, 255, 255), font=font_cat)
+
+        # Satellite relay badge (top-right)
+        ots_draw.rounded_rectangle((360, 6, 500, 26), radius=4, fill=(3, 105, 161, 216))
+        ots_draw.text((370, 9), "📡 LIVE VIDEO RELAY", fill=(255, 255, 255), font=font_xs)
+
+        # ── LEFT SIDE: STORY PHOTOGRAPH ──
+        photo_x, photo_y, photo_w, photo_h = 20, 38, 230, 130
+        photo_loaded = False
+
+        if image_path and os.path.exists(image_path):
+            try:
+                story_photo = Image.open(image_path).convert("RGB")
+                story_photo = ImageOps.fit(story_photo, (photo_w, photo_h), method=Image.Resampling.LANCZOS)
+
+                # Rounded corner mask for the photo
+                photo_mask = Image.new("L", (photo_w, photo_h), 0)
+                ImageDraw.Draw(photo_mask).rounded_rectangle((0, 0, photo_w, photo_h), radius=8, fill=255)
+
+                # Paste photo with rounded corners onto OTS panel
+                photo_rgba = story_photo.copy().convert("RGBA")
+                photo_rgba.putalpha(photo_mask)
+                ots_panel.paste(story_photo, (photo_x, photo_y), photo_mask)
+
+                # Cyan border around photo
+                ots_draw.rounded_rectangle(
+                    (photo_x, photo_y, photo_x + photo_w, photo_y + photo_h),
+                    radius=8, outline=(0, 240, 255, 200), width=2
+                )
+
+                # "LIVE PHOTO" badge
+                ots_draw.rounded_rectangle((photo_x + 6, photo_y + 6, photo_x + 100, photo_y + 24), radius=3, fill=(239, 68, 68, 230))
+                ots_draw.ellipse((photo_x + 10, photo_y + 11, photo_x + 16, photo_y + 17), fill=(255, 255, 255))
+                ots_draw.text((photo_x + 20, photo_y + 8), "LIVE PHOTO", fill=(255, 255, 255), font=font_xs)
+                photo_loaded = True
+            except Exception:
+                photo_loaded = False
+
+        if not photo_loaded:
+            # Fallback: dark satellite radar panel
+            ots_draw.rounded_rectangle(
+                (photo_x, photo_y, photo_x + photo_w, photo_y + photo_h),
+                radius=8, fill=(10, 20, 36, 230), outline=(0, 240, 255, 150), width=2
+            )
+            ots_draw.text((photo_x + 60, photo_y + 50), "🌐", fill=(56, 189, 248), font=font_lg)
+            ots_draw.text((photo_x + 40, photo_y + 90), "SATELLITE WIRE", fill=(56, 189, 248), font=font_sm)
+
+        # ── RIGHT SIDE: PUBLISHER BADGE & TELEMETRY ──
+        pb_x, pb_y, pb_w, pb_h = 260, 38, 230, 34
+        ots_draw.rounded_rectangle((pb_x, pb_y, pb_x + pb_w, pb_y + pb_h), radius=6, fill=source_bg + (255,), outline=(51, 65, 85, 200))
+        ots_draw.text((pb_x + 12, pb_y + 8), f"⚡ {source.upper()[:20]}", fill=(255, 255, 255), font=font_md)
+
+        # Telemetry intel box
+        tel_x, tel_y, tel_w, tel_h = 260, 78, 230, 90
+        ots_draw.rounded_rectangle((tel_x, tel_y, tel_x + tel_w, tel_y + tel_h), radius=6, fill=(10, 20, 36, 230), outline=(30, 41, 59, 200))
+        ots_draw.ellipse((tel_x + 10, tel_y + 14, tel_x + 17, tel_y + 21), fill=(56, 189, 248))
+        ots_draw.text((tel_x + 24, tel_y + 12), "1080p Satellite Feed", fill=(56, 189, 248), font=font_sm)
+        ots_draw.ellipse((tel_x + 10, tel_y + 38, tel_x + 17, tel_y + 45), fill=(34, 197, 94))
+        ots_draw.text((tel_x + 24, tel_y + 36), "● VERIFIED BROADCAST", fill=(34, 197, 94), font=font_sm)
+        ots_draw.ellipse((tel_x + 10, tel_y + 62, tel_x + 17, tel_y + 69), fill=(251, 191, 36))
+        ots_draw.text((tel_x + 24, tel_y + 60), f"TOPIC: {topic.upper()[:18]}", fill=(203, 213, 225), font=font_sm)
+
+        # Divider
+        ots_draw.line([(20, 178), (490, 178)], fill=(51, 65, 85, 200), width=1)
+
+        # Headline in OTS — word-wrapped to 2 lines
+        hl_lines = _wrap_text(headline, 42)
+        y_offset = 190
+        for line in hl_lines[:2]:
+            ots_draw.text((20, y_offset), line, fill=(255, 255, 255), font=font_md)
+            y_offset += 20
+
+        # Source attribution bar at bottom
+        ots_draw.rectangle((0, 235, ots_w, ots_h), fill=(6, 12, 22, 245))
+        # Gold accent line
+        for gx in range(ots_w):
+            frac = gx / max(ots_w, 1)
+            r = int(217 + (251 - 217) * frac)
+            g = int(119 + (191 - 119) * frac)
+            b = int(6 + (36 - 6) * frac)
+            ots_draw.point((gx, 233), fill=(r, g, b, 255))
+            ots_draw.point((gx, 234), fill=(r, g, b, 255))
+
+        ots_draw.text((20, 244), f"⚡ SOURCE: {source.upper()}", fill=(251, 191, 36), font=font_sm)
+        ots_draw.text((20, 262), "⚖️ FAIR USE / EDITORIAL • CC-BY 4.0", fill=(100, 116, 139), font=font_xs)
+        ots_draw.text((20, 278), "(SEC 107 U.S. & SEC 52(1)(a) INDIAN COPYRIGHT ACT)", fill=(71, 85, 105), font=font_xs)
+
+        # Paste OTS panel onto main canvas
+        img.paste(ots_panel, (ots_x, ots_y), ots_panel)
+
+        # ═══════════════════════════════════════════════
+        # BOTTOM: LOWER-THIRD & TICKER (at y=525)
+        # ═══════════════════════════════════════════════
+        lt_x, lt_y = 20, 525
+        lt_w = 1240
+
+        # Breaking News angled trapezoid
+        draw.polygon([(lt_x, lt_y), (lt_x + 320, lt_y), (lt_x + 290, lt_y + 42), (lt_x, lt_y + 42)],
+                      fill=(220, 38, 38, 250))
+        # Gold border
+        draw.line([(lt_x, lt_y + 42), (lt_x + 290, lt_y + 42)], fill=(251, 191, 36, 200), width=2)
+        draw.text((lt_x + 32, lt_y + 10), "⚡ BREAKING NEWS", fill=(255, 255, 255), font=font_md)
+
+        # Location & Clock badge
+        time_str = time.strftime("%H:%M") + " IST"
+        draw.polygon([(lt_x + 295, lt_y), (lt_x + 560, lt_y), (lt_x + 535, lt_y + 42), (lt_x + 270, lt_y + 42)],
+                      fill=(15, 23, 42, 240))
+        draw.ellipse((lt_x + 310, lt_y + 16, lt_x + 320, lt_y + 26), fill=(239, 68, 68))
+        draw.text((lt_x + 330, lt_y + 12), f"LIVE • NEW DELHI • {time_str}", fill=(255, 255, 255), font=font_sm)
+
+        # Source ribbon (right edge)
+        draw.polygon([(lt_x + 1010, lt_y + 10), (lt_x + lt_w, lt_y + 10), (lt_x + lt_w, lt_y + 42), (lt_x + 985, lt_y + 42)],
+                      fill=(30, 41, 59, 240))
+        draw.text((lt_x + 1020, lt_y + 18), f"FEED: {source.upper()[:18]}", fill=(56, 189, 248), font=font_sm)
+
+        # Main headline plate
+        draw.rectangle((lt_x, lt_y + 42, lt_x + lt_w, lt_y + 134), fill=(7, 13, 24, 248))
+        draw.rectangle((lt_x, lt_y + 42, lt_x + lt_w, lt_y + 134), outline=(30, 41, 59, 200), width=2)
+        # Red accent strip on left
+        draw.rectangle((lt_x, lt_y + 42, lt_x + 8, lt_y + 134), fill=(220, 38, 38, 250))
+
+        # Main headline text — word-wrapped to 2 lines
+        hl_wrapped = _wrap_text(headline, 65)
+        hl_y = lt_y + 65
+        for hl_line in hl_wrapped[:2]:
+            draw.text((lt_x + 30, hl_y), hl_line, fill=(255, 255, 255), font=font_headline)
+            hl_y += 32
+
+        # Running ticker strip
+        draw.rectangle((lt_x, lt_y + 134, lt_x + lt_w, lt_y + 176), fill=(5, 9, 18, 245))
+        draw.rectangle((lt_x, lt_y + 134, lt_x + lt_w, lt_y + 176), outline=(0, 240, 255, 100), width=1)
+
+        # Yellow "TOP STORIES" tag
+        draw.rectangle((lt_x, lt_y + 134, lt_x + 165, lt_y + 176), fill=(234, 179, 8, 255))
+        draw.text((lt_x + 20, lt_y + 148), "▶ TOP STORIES", fill=(0, 0, 0), font=font_ticker)
+
+        # Ticker headlines
+        if ticker_items:
+            ticker_text = "   ✦   ".join(t[:60] for t in ticker_items[:5])
+        else:
+            ticker_text = "24/7 Global Satellite Live Feed   ✦   Verified Real-Time Broadcast Wire"
+        draw.text((lt_x + 185, lt_y + 148), ticker_text[:130], fill=(248, 250, 252), font=font_ticker)
+
+        # Save as transparent PNG
+        try:
+            img.save(output_path, "PNG")
+            return output_path
+        except Exception:
+            return None
+
+    @staticmethod
     def generate_news_lower_third(
         headline: str,
         category: str = "BREAKING NEWS",
@@ -126,18 +386,20 @@ class OverlayGenerator:
         - Top-Right: Over-The-Shoulder (OTS) News Media Window with real story photograph & verified publisher
         - Bottom: Multi-tier 3D angled Breaking News lower-third with clock, city bug, and live ticker
         - Left: Open broadcast window for the AI Anchorwoman
+
+        Also pre-renders a reliable PNG overlay using Pillow (not FFmpeg librsvg).
         """
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
         safe_headline = escape_xml(headline or "Top Story Updating Live...")
         if len(safe_headline) > 75:
-            safe_headline = safe_headline[:72] + "..."
+            safe_headline = _truncate_at_word(safe_headline, 72)
 
         safe_cat = escape_xml(category.upper() if category else "BREAKING NEWS")
         safe_source = escape_xml(source.upper() if source else "GLOBAL WIRE")
         safe_topic = escape_xml(topic.upper() if topic else "BREAKING")
 
-        # Encode news photo to base64 for self-contained SVG & PNG rendering
+        # Encode news photo to base64 for the SVG (used as fallback)
         b64_photo = ""
         resolved_img = image_path if image_path and os.path.exists(image_path) else "overlay/current_story_photo.jpg"
         if resolved_img and os.path.exists(resolved_img):
@@ -372,19 +634,19 @@ class OverlayGenerator:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(svg)
 
-        # Pre-render SVG to transparent PNG for high-performance zero-lag compositing
+        # ── Pre-render to reliable PNG using Pillow ──
+        # FFmpeg's librsvg silently drops base64 images, so we use Pillow
+        # which composites the story photo directly and guarantees it appears.
         if output_path.endswith(".svg"):
             png_path = output_path[:-4] + ".png"
-            try:
-                subprocess.run(
-                    ["ffmpeg", "-y", "-i", output_path, png_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    timeout=5
-                )
-            except Exception:
-                pass
+            OverlayGenerator._render_news_overlay_png(
+                headline=headline or "Top Story Updating Live...",
+                category=category,
+                source=source,
+                ticker_items=ticker_items,
+                image_path=image_path,
+                topic=topic,
+                output_path=png_path,
+            )
 
         return output_path
-
-

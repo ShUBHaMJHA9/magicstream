@@ -196,11 +196,24 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--cookies", "--cookie-file",
+        dest="cookies",
+        default=None,
+        help="Path to YouTube cookies.txt file for yt-dlp authentication (COMPULSORY on VPS/servers)"
+    )
+
+    parser.add_argument(
+        "--cookies-from-browser",
+        dest="cookies_from_browser",
+        default=None,
+        help="Load cookies directly from browser (e.g. 'chrome', 'firefox', 'brave', 'edge', 'chromium')"
+    )
+
+    parser.add_argument(
         "--interactive", "-i",
         action="store_true",
         help="Launch interactive terminal wizard menu"
     )
-
 
     return parser.parse_args()
 
@@ -337,12 +350,18 @@ def main():
         config_manager.config["overlay"]["position"] = args.logo_pos
     if args.no_overlay:
         config_manager.config["overlay"]["enable"] = False
-
     # Apply Playback Order & Video Selection
     if args.playback_order:
         config_manager.config["streaming"]["playback_order"] = args.playback_order
     if args.video_selection:
         config_manager.config["streaming"]["video_selection"] = args.video_selection
+
+    # Apply Cookie Overrides (Crucial for VPS)
+    if args.cookies:
+        config_manager.config["streaming"]["cookie_file"] = args.cookies
+        config_manager.config["streaming"].setdefault("mode_2_yt_relay", {})["cookie_file"] = args.cookies
+    if args.cookies_from_browser:
+        config_manager.config["streaming"]["cookies_from_browser"] = args.cookies_from_browser
 
     # Apply Logging Overrides
     if args.log_file:
@@ -380,10 +399,13 @@ def main():
     log_status = streamer.log_file_path if streamer.log_to_file else "Disabled"
     print(render_hardware_card(hw, encoder=encoder_name, log_path=log_status) + "\n")
 
+    cookies_status = f"{GREEN}{streamer.extractor.cookie_file}{RESET}" if getattr(streamer, "extractor", None) and streamer.extractor.cookie_file else f"{RED}None (⚠️ VPS Bot-Block Risk){RESET}"
+
     print(f"{BOLD}{GREEN}⚡ Starting MagicStream Broadcast Engine...{RESET}")
     print(f"  {CYAN}Mode:{RESET}        {WHITE}{target_mode}{RESET}")
     print(f"  {CYAN}Platform:{RESET}    {WHITE}{platform.upper()}{RESET}")
     print(f"  {CYAN}Profile:{RESET}     {YELLOW}{streamer.active_profile_name}{RESET} {DIM}(Hardware-Adaptive){RESET}")
+    print(f"  {CYAN}Cookies:{RESET}     {cookies_status}")
     print(f"  {CYAN}Diagnostics:{RESET} {GREEN}{log_status}{RESET}\n")
 
     # Launch Stream Worker Thread unless api_only is set

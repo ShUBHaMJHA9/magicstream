@@ -18,14 +18,96 @@ except ImportError:
 
 
 class MediaExtractor:
-    """Extracts streaming URLs for live streams, videos, and playlists."""
+    """Extracts streaming URLs for live streams, videos, and playlists with bulletproof cookie support."""
 
-    def __init__(self, cookie_file: Optional[str] = "cookies.txt"):
-        self.cookie_file = cookie_file if cookie_file and os.path.exists(cookie_file) else None
+    def __init__(self, cookie_file: Optional[str] = "cookies.txt", cookies_from_browser: Optional[str] = None):
+        self.cookie_file = self._resolve_cookie_file(cookie_file)
+        self.cookies_from_browser = cookies_from_browser
         self._url_cache: Dict[str, Dict[str, Any]] = {}
         self._title_cache: Dict[str, str] = {}
         self.cache_ttl_seconds = 3600 * 2
         self.last_error: Optional[str] = None
+
+    @classmethod
+    def _resolve_cookie_file(cls, cookie_file: Optional[str] = "cookies.txt") -> Optional[str]:
+        """
+        Robustly locate and validate the YouTube cookies.txt file across
+        custom paths, current working directory, project root, and environment variables.
+        Essential for VPS / cloud server streaming to bypass YouTube bot detection.
+        """
+        candidates: List[str] = []
+        if cookie_file:
+            candidates.append(cookie_file)
+            if not os.path.isabs(cookie_file):
+                candidates.append(os.path.abspath(cookie_file))
+                # Project root relative to magicstream package
+                pkg_dir = os.path.dirname(os.path.abspath(__file__))
+                project_root = os.path.dirname(pkg_dir)
+                candidates.append(os.path.join(project_root, cookie_file))
+
+        # Check environment variables
+        for env_var in ["MAGICSTREAM_COOKIES", "YT_COOKIES", "YOUTUBE_COOKIES_PATH", "COOKIES_FILE"]:
+            val = os.environ.get(env_var)
+            if val:
+                candidates.append(val)
+                if not os.path.isabs(val):
+                    candidates.append(os.path.abspath(val))
+
+        # Common fallback locations
+        pkg_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(pkg_dir)
+        candidates.extend([
+            os.path.join(os.getcwd(), "cookies.txt"),
+            os.path.join(project_root, "cookies.txt"),
+            os.path.expanduser("~/.config/magicstream/cookies.txt"),
+            os.path.expanduser("~/cookies.txt"),
+        ])
+
+        # Deduplicate candidates preserving order
+        seen = set()
+        deduped = []
+        for c in candidates:
+            if c and c not in seen:
+                seen.add(c)
+                deduped.append(c)
+
+        for path in deduped:
+            if os.path.isfile(path):
+                size = os.path.getsize(path)
+                if size > 0:
+                    cls._inspect_cookie_file(path)
+                    return os.path.abspath(path)
+
+        print("[MagicStream Extractor] ⚠️ WARNING: No valid 'cookies.txt' file found in any expected location.")
+        print("[MagicStream Extractor] ⚠️ YouTube blocks VPS / Datacenter IPs with 'Sign in to confirm you’re not a bot'.")
+        print("[MagicStream Extractor] ⚠️ Passing cookies is COMPULSORY for VPS streaming!")
+        print("[MagicStream Extractor] 💡 Fix: Place your exported cookies.txt in the project root or use --cookies <path>.")
+        return None
+
+    @classmethod
+    def _inspect_cookie_file(cls, path: str) -> None:
+        """Inspect and log diagnostic details about the cookie file."""
+        size = os.path.getsize(path)
+        has_youtube = False
+        has_auth = False
+        auth_tokens = ["__Secure-1PSID", "__Secure-3PSID", "SID", "LOGIN_INFO", "SSID", "HSID"]
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read(8192)
+                if "youtube.com" in content or ".youtube.com" in content:
+                    has_youtube = True
+                for token in auth_tokens:
+                    if token in content:
+                        has_auth = True
+                        break
+        except Exception:
+            pass
+
+        auth_tag = "Authenticated Session (VPS Ready)" if has_auth else "Guest/Visitor Session (Export signed-in cookies for VPS)"
+        print(f"[MagicStream Extractor] 🍪 YouTube Cookie File: '{os.path.abspath(path)}' ({size} bytes)")
+        print(f"[MagicStream Extractor] 🔒 Cookie Status: {auth_tag}")
+        if not has_auth and has_youtube:
+            print("[MagicStream Extractor] ℹ️  Tip: If your VPS gets 'Sign in to confirm you’re not a bot', export cookies while logged into YouTube.")
 
     def get_title(self, url: str) -> str:
         """Returns cached or extracted human-readable title of media."""
@@ -36,7 +118,7 @@ class MediaExtractor:
         return self._title_cache.get(url, os.path.basename(url))
 
     def _get_ydl_options(self, audio_only: bool = False, quality: str = "best") -> Dict[str, Any]:
-        """Build yt-dlp extraction options with mobile client bypasses for bot blocks."""
+        """Build yt-dlp extraction options with cookie support and mobile client bypasses."""
         if audio_only:
             format_spec = "bestaudio/best/18"
         else:
@@ -55,16 +137,29 @@ class MediaExtractor:
             "no_warnings": True,
             "noplaylist": True,
             "extract_flat": False,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["ios", "android", "mweb", "web"],
-                    "skip": ["authcheck"],
-                }
-            },
         }
 
-        if self.cookie_file and os.path.exists(self.cookie_file):
+        if self.cookie_file and os.path.isfile(self.cookie_file):
             opts["cookiefile"] = self.cookie_file
+            opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["web", "tv", "android", "mweb", "ios"],
+                }
+            }
+        elif self.cookies_from_browser:
+            opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
+            opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["web", "tv", "android", "mweb", "ios"],
+                }
+            }
+        else:
+            opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["android", "ios", "mweb", "web"],
+                    "skip": ["authcheck"],
+                }
+            }
 
         return opts
 
@@ -111,8 +206,28 @@ class MediaExtractor:
                 return stream_url
         except Exception as e:
             self.last_error = str(e)
-            print(f"[MagicStream Extractor] Failed to extract audio from '{url}': {e}")
+            err_str = str(e)
+            print(f"[MagicStream Extractor] Failed to extract audio from '{url}': {err_str}")
+            self._handle_extraction_error(err_str)
             return None
+
+    def _handle_extraction_error(self, err_str: str) -> None:
+        """Provide detailed, actionable diagnostics for common YouTube VPS issues."""
+        err_lower = err_str.lower()
+        if "bot" in err_lower or "sign in" in err_lower or "confirm you're not a bot" in err_lower:
+            print("[MagicStream Extractor] ❌ [YOUTUBE BOT DETECTION ON VPS]")
+            if self.cookie_file:
+                print(f"[MagicStream Extractor] ⚠️ Your cookies file ('{self.cookie_file}') was passed to yt-dlp, but YouTube rejected it.")
+                print("[MagicStream Extractor] 💡 Reasons:")
+                print("   1. Cookies were exported while NOT logged in (guest/visitor cookies only).")
+                print("   2. Your YouTube session expired or Google invalidated the tokens.")
+                print("   👉 Solution: Open Chrome/Firefox -> Sign into YouTube -> Export cookies using 'Get cookies.txt LOCALLY' -> Upload to VPS cookies.txt")
+            else:
+                print("[MagicStream Extractor] ⚠️ No cookies.txt was found or loaded!")
+                print("[MagicStream Extractor] 💡 On VPS / Cloud Datacenter IPs, passing cookies is COMPULSORY.")
+                print("   👉 Solution: Export cookies.txt from your browser and place it in the project root.")
+        elif "requested format is not available" in err_lower or "sabr" in err_lower:
+            print("[MagicStream Extractor] ℹ️ Tip: YouTube format selection active. Adjusting player client fallback.")
 
     def extract_video_stream(self, url: str, quality: str = "best", force_refresh: bool = False) -> Optional[Dict[str, Any]]:
         """
@@ -160,7 +275,11 @@ class MediaExtractor:
                     if valid:
                         best_f = valid[-1]
                         video_url = best_f.get("url")
-                        audio_url = best_f.get("url")
+                        if best_f.get("acodec") != "none":
+                            audio_url = video_url
+                        else:
+                            audio_valid = [f for f in formats if f.get("url") and f.get("acodec") != "none"]
+                            audio_url = audio_valid[-1].get("url") if audio_valid else video_url
 
                 result = {
                     "video_url": video_url,
@@ -175,7 +294,9 @@ class MediaExtractor:
                 return result
         except Exception as e:
             self.last_error = str(e)
-            print(f"[MagicStream Extractor] Failed to extract video stream from '{url}': {e}")
+            err_str = str(e)
+            print(f"[MagicStream Extractor] Failed to extract video stream from '{url}': {err_str}")
+            self._handle_extraction_error(err_str)
             return None
 
 

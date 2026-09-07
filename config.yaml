@@ -46,6 +46,9 @@ streaming:
   # Background video selection: "random" (pick random clip from video/), "sequential", or "single"
   video_selection: "random"
 
+  # YouTube Authentication Cookies (COMPULSORY for VPS / Cloud Servers to prevent bot blocking)
+  cookie_file: "cookies.txt"
+
   # Mode 1 Settings (Radio Looper)
   mode_1_radio:
     video_path: "video/vid.mp4"

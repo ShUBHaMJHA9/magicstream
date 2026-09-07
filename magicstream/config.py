@@ -33,6 +33,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "mode": "mode_1_radio",
         "playback_order": "random",
         "video_selection": "random",
+        "cookie_file": "cookies.txt",
         "mode_1_radio": {
             "video_path": "video/vid.mp4",
             "audio_source": "audio/audio.txt",

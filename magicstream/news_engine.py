@@ -118,17 +118,33 @@ class NewsFetcher:
                     pub_str = pub_elem.text.strip() if pub_elem is not None and pub_elem.text else ""
 
                     # Extract story photo URL from RSS media tags or description HTML
+                    # Google News uses Yahoo MRSS namespace: {http://search.yahoo.com/mrss/}
                     img_url = ""
+                    mrss_ns = "{http://search.yahoo.com/mrss/}"
                     for child in item:
-                        tag = child.tag.lower()
-                        if "thumbnail" in tag or "content" in tag or "enclosure" in tag:
-                            url = child.attrib.get("url")
+                        tag = child.tag.lower() if isinstance(child.tag, str) else ""
+                        full_tag = child.tag if isinstance(child.tag, str) else ""
+                        # Check standard and namespaced media tags
+                        if ("thumbnail" in tag or "content" in tag or "enclosure" in tag
+                                or full_tag == f"{mrss_ns}thumbnail"
+                                or full_tag == f"{mrss_ns}content"):
+                            url = child.attrib.get("url") or child.attrib.get("href", "")
                             if url and any(ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp", "image"]):
                                 img_url = url
                                 break
+                    # Also try namespace-aware find
+                    if not img_url:
+                        thumb_elem = item.find(f"{mrss_ns}thumbnail")
+                        if thumb_elem is not None:
+                            img_url = thumb_elem.attrib.get("url", "")
+                    if not img_url:
+                        content_elem = item.find(f"{mrss_ns}content")
+                        if content_elem is not None:
+                            img_url = content_elem.attrib.get("url", "")
+                    # Fallback: extract from description HTML <img src="...">
                     if not img_url:
                         desc_text = item.findtext("description") or ""
-                        m = re.search(r'<img[^>]+src=[\"\']([^\"\'>]+)', desc_text)
+                        m = re.search(r'<img[^>]+src=[\"\'](https?://[^\"\'> ]+)', desc_text)
                         if m:
                             img_url = m.group(1)
 
@@ -223,13 +239,18 @@ class NewsBroadcastStudio:
             try:
                 headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
                 req = urllib.request.Request(active_story.image_url, headers=headers)
-                with urllib.request.urlopen(req, timeout=3.0) as resp:
+                with urllib.request.urlopen(req, timeout=5.0) as resp:
                     p_data = resp.read()
                     if len(p_data) > 1000:
                         with open(story_photo_path, "wb") as pf:
                             pf.write(p_data)
                         photo_resolved = True
-            except Exception:
+            except Exception as photo_err:
+                # Log the failure so we can debug OTS image issues
+                import logging
+                logging.getLogger("magicstream").debug(
+                    f"Photo download failed for '{active_story.image_url[:80]}': {photo_err}"
+                )
                 photo_resolved = False
 
         if not photo_resolved:

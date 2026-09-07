@@ -29,8 +29,19 @@ class LiveStreamManager:
     """Manages continuous 24/7 live streaming with adaptive auto-downgrade resilience."""
 
     def __init__(self, config_manager: ConfigManager):
-        self.config_manager = config_manager
-        self.extractor = MediaExtractor(cookie_file=self.config_manager.get("streaming", {}).get("mode_2_yt_relay", {}).get("cookie_file", "cookies.txt"))
+        cookie_path = (
+            self.config_manager.get("streaming", {}).get("cookie_file")
+            or self.config_manager.get("streaming", {}).get("mode_2_yt_relay", {}).get("cookie_file")
+            or self.config_manager.get("cookie_file")
+            or os.environ.get("MAGICSTREAM_COOKIES")
+            or os.environ.get("YT_COOKIES")
+            or "cookies.txt"
+        )
+        cookies_browser = (
+            self.config_manager.get("streaming", {}).get("cookies_from_browser")
+            or self.config_manager.get("cookies_from_browser")
+        )
+        self.extractor = MediaExtractor(cookie_file=cookie_path, cookies_from_browser=cookies_browser)
         self.ffmpeg_builder = FFmpegBuilder(self.config_manager.config)
         hw_accel = self.config_manager.get("encoding", {}).get("hw_accel", "auto")
         self.encoder = self.ffmpeg_builder.detect_encoder(hw_accel)
