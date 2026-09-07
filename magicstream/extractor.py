@@ -75,14 +75,57 @@ class MediaExtractor:
             if os.path.isfile(path):
                 size = os.path.getsize(path)
                 if size > 0:
-                    cls._inspect_cookie_file(path)
-                    return os.path.abspath(path)
+                    clean_path = cls._sanitize_cookie_file(os.path.abspath(path))
+                    cls._inspect_cookie_file(clean_path)
+                    return clean_path
 
         print("[MagicStream Extractor] ⚠️ WARNING: No valid 'cookies.txt' file found in any expected location.")
         print("[MagicStream Extractor] ⚠️ YouTube blocks VPS / Datacenter IPs with 'Sign in to confirm you’re not a bot'.")
         print("[MagicStream Extractor] ⚠️ Passing cookies is COMPULSORY for VPS streaming!")
         print("[MagicStream Extractor] 💡 Fix: Place your exported cookies.txt in the project root or use --cookies <path>.")
         return None
+
+    @classmethod
+    def _sanitize_cookie_file(cls, path: str) -> str:
+        """
+        Sanitizes cookies.txt file to ensure it is strictly compliant with
+        MozillaCookieJar / Netscape specifications.
+        Automatically repairs stray editor characters (like 'v# Netscape', BOM markers, leading blank lines).
+        """
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+
+            needs_repair = False
+            first_line = content.split("\n", 1)[0] if content else ""
+            if not first_line.startswith("# Netscape HTTP Cookie File") and not first_line.startswith("# HTTP Cookie File"):
+                needs_repair = True
+            if content.startswith("\ufeff"):
+                needs_repair = True
+
+            if needs_repair:
+                lines = content.splitlines()
+                cleaned_lines = ["# Netscape HTTP Cookie File", "# This is a generated file! Do not edit.", ""]
+                header_skipped = False
+                for line in lines:
+                    stripped = line.strip()
+                    if not header_skipped and ("HTTP Cookie File" in line or "cookie_spec" in line or "generated file" in line):
+                        continue
+                    header_skipped = True
+                    if not stripped:
+                        continue
+                    cleaned_lines.append(line)
+
+                cleaned_content = "\n".join(cleaned_lines) + "\n"
+                try:
+                    with open(path, "w", encoding="utf-8") as f:
+                        f.write(cleaned_content)
+                    print(f"[MagicStream Extractor] 🩹 Auto-repaired corrupted Netscape cookie header in '{path}'!")
+                except Exception as write_err:
+                    print(f"[MagicStream Extractor] Note: Could not write clean cookies.txt in-place: {write_err}")
+        except Exception as e:
+            print(f"[MagicStream Extractor] Warning during cookie sanitization: {e}")
+        return path
 
     @classmethod
     def _inspect_cookie_file(cls, path: str) -> None:
@@ -117,7 +160,7 @@ class MediaExtractor:
             return os.path.splitext(os.path.basename(url))[0]
         return self._title_cache.get(url, os.path.basename(url))
 
-    def _get_ydl_options(self, audio_only: bool = False, quality: str = "best") -> Dict[str, Any]:
+    def _get_ydl_options(self, audio_only: bool = False, quality: str = "best", client_list: Optional[List[str]] = None) -> Dict[str, Any]:
         """Build yt-dlp extraction options with cookie support and mobile client bypasses."""
         if audio_only:
             format_spec = "bestaudio/best/18"
@@ -139,32 +182,26 @@ class MediaExtractor:
             "extract_flat": False,
         }
 
+        # Android client completely avoids 'The page needs to be reloaded' web interstitials
+        # while using authenticated session cookies for full resolution
+        clients = client_list or ["android", "ios", "mweb", "web"]
+
+        opts["extractor_args"] = {
+            "youtube": {
+                "player_client": clients,
+                "skip": ["authcheck"],
+            }
+        }
+
         if self.cookie_file and os.path.isfile(self.cookie_file):
             opts["cookiefile"] = self.cookie_file
-            opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["web", "tv", "android", "mweb", "ios"],
-                }
-            }
         elif self.cookies_from_browser:
             opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
-            opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["web", "tv", "android", "mweb", "ios"],
-                }
-            }
-        else:
-            opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["android", "ios", "mweb", "web"],
-                    "skip": ["authcheck"],
-                }
-            }
 
         return opts
 
     def extract_audio_url(self, url: str, force_refresh: bool = False) -> Optional[str]:
-        """Extract best direct audio stream URL from a given link."""
+        """Extract best direct audio stream URL from a given link with multi-client fallback."""
         if not url:
             return None
 
@@ -184,32 +221,41 @@ class MediaExtractor:
             print("[MagicStream Extractor] Error: yt-dlp is not installed.")
             return None
 
-        opts = self._get_ydl_options(audio_only=True)
-        try:
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                if not info:
-                    return None
+        client_tiers = [
+            ["android", "ios", "mweb", "web"],
+            ["android"],
+            ["web", "mweb"],
+        ]
 
-                if info.get("title"):
-                    self._title_cache[url] = info["title"]
+        for clients in client_tiers:
+            opts = self._get_ydl_options(audio_only=True, client_list=clients)
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    if not info:
+                        continue
 
-                stream_url = info.get("url")
-                if not stream_url:
-                    formats = info.get("formats", [])
-                    valid = [f for f in formats if f.get("url") and f.get("acodec") != "none"]
-                    if valid:
-                        stream_url = valid[-1].get("url")
+                    if info.get("title"):
+                        self._title_cache[url] = info["title"]
 
-                if stream_url:
-                    self._url_cache[cache_key] = {"stream_url": stream_url, "timestamp": now}
-                return stream_url
-        except Exception as e:
-            self.last_error = str(e)
-            err_str = str(e)
-            print(f"[MagicStream Extractor] Failed to extract audio from '{url}': {err_str}")
-            self._handle_extraction_error(err_str)
-            return None
+                    stream_url = info.get("url")
+                    if not stream_url:
+                        formats = info.get("formats", [])
+                        valid = [f for f in formats if f.get("url") and f.get("acodec") != "none"]
+                        if valid:
+                            stream_url = valid[-1].get("url")
+
+                    if stream_url:
+                        self._url_cache[cache_key] = {"stream_url": stream_url, "timestamp": now}
+                        return stream_url
+            except Exception as e:
+                self.last_error = str(e)
+                continue
+
+        err_str = self.last_error or "Unknown extraction failure"
+        print(f"[MagicStream Extractor] Failed to extract audio from '{url}': {err_str}")
+        self._handle_extraction_error(err_str)
+        return None
 
     def _handle_extraction_error(self, err_str: str) -> None:
         """Provide detailed, actionable diagnostics for common YouTube VPS issues."""
@@ -226,12 +272,14 @@ class MediaExtractor:
                 print("[MagicStream Extractor] ⚠️ No cookies.txt was found or loaded!")
                 print("[MagicStream Extractor] 💡 On VPS / Cloud Datacenter IPs, passing cookies is COMPULSORY.")
                 print("   👉 Solution: Export cookies.txt from your browser and place it in the project root.")
+        elif "page needs to be reloaded" in err_lower:
+            print("[MagicStream Extractor] ℹ️ YouTube web reload interstitial bypassed via android client fallback.")
         elif "requested format is not available" in err_lower or "sabr" in err_lower:
             print("[MagicStream Extractor] ℹ️ Tip: YouTube format selection active. Adjusting player client fallback.")
 
     def extract_video_stream(self, url: str, quality: str = "best", force_refresh: bool = False) -> Optional[Dict[str, Any]]:
         """
-        Extract direct video and audio streaming URLs for restreaming.
+        Extract direct video and audio streaming URLs for restreaming with multi-client fallback.
         Returns a dict with 'video_url', 'audio_url', 'title', 'is_live'.
         """
         if not url:
@@ -251,53 +299,61 @@ class MediaExtractor:
             print("[MagicStream Extractor] Error: yt-dlp is not installed.")
             return None
 
-        opts = self._get_ydl_options(audio_only=False, quality=quality)
-        try:
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                if not info:
-                    return None
+        client_tiers = [
+            ["android", "ios", "mweb", "web"],
+            ["android"],
+            ["web", "mweb"],
+        ]
 
-                video_url = info.get("url")
-                audio_url = None
+        for clients in client_tiers:
+            opts = self._get_ydl_options(audio_only=False, quality=quality, client_list=clients)
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    if not info:
+                        continue
 
-                requested_formats = info.get("requested_formats")
-                if requested_formats and len(requested_formats) >= 2:
-                    video_url = requested_formats[0].get("url")
-                    audio_url = requested_formats[1].get("url")
-                elif not audio_url:
-                    audio_url = video_url
+                    video_url = info.get("url")
+                    audio_url = None
 
-                # Fallback: search available formats for best stream with valid URL
-                if not video_url:
-                    formats = info.get("formats", [])
-                    valid = [f for f in formats if f.get("url") and f.get("vcodec") != "none"]
-                    if valid:
-                        best_f = valid[-1]
-                        video_url = best_f.get("url")
-                        if best_f.get("acodec") != "none":
-                            audio_url = video_url
-                        else:
-                            audio_valid = [f for f in formats if f.get("url") and f.get("acodec") != "none"]
-                            audio_url = audio_valid[-1].get("url") if audio_valid else video_url
+                    requested_formats = info.get("requested_formats")
+                    if requested_formats and len(requested_formats) >= 2:
+                        video_url = requested_formats[0].get("url")
+                        audio_url = requested_formats[1].get("url")
+                    elif not audio_url:
+                        audio_url = video_url
 
-                result = {
-                    "video_url": video_url,
-                    "audio_url": audio_url,
-                    "title": info.get("title", "Live Stream"),
-                    "is_live": info.get("is_live", False),
-                    "duration": info.get("duration", 0),
-                }
+                    # Fallback: search available formats for best stream with valid URL
+                    if not video_url:
+                        formats = info.get("formats", [])
+                        valid = [f for f in formats if f.get("url") and f.get("vcodec") != "none"]
+                        if valid:
+                            best_f = valid[-1]
+                            video_url = best_f.get("url")
+                            if best_f.get("acodec") != "none":
+                                audio_url = video_url
+                            else:
+                                audio_valid = [f for f in formats if f.get("url") and f.get("acodec") != "none"]
+                                audio_url = audio_valid[-1].get("url") if audio_valid else video_url
 
-                if video_url:
-                    self._url_cache[cache_key] = {"data": result, "timestamp": now}
-                return result
-        except Exception as e:
-            self.last_error = str(e)
-            err_str = str(e)
-            print(f"[MagicStream Extractor] Failed to extract video stream from '{url}': {err_str}")
-            self._handle_extraction_error(err_str)
-            return None
+                    if video_url:
+                        result = {
+                            "video_url": video_url,
+                            "audio_url": audio_url,
+                            "title": info.get("title", "Live Stream"),
+                            "is_live": info.get("is_live", False),
+                            "duration": info.get("duration", 0),
+                        }
+                        self._url_cache[cache_key] = {"data": result, "timestamp": now}
+                        return result
+            except Exception as e:
+                self.last_error = str(e)
+                continue
+
+        err_str = self.last_error or "Unknown extraction failure"
+        print(f"[MagicStream Extractor] Failed to extract video stream from '{url}': {err_str}")
+        self._handle_extraction_error(err_str)
+        return None
 
 
     def parse_playlist_file(self, file_path: str) -> List[str]:
