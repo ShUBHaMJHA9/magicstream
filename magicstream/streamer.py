@@ -29,6 +29,7 @@ class LiveStreamManager:
     """Manages continuous 24/7 live streaming with adaptive auto-downgrade resilience."""
 
     def __init__(self, config_manager: ConfigManager):
+        self.config_manager = config_manager
         cookie_path = (
             self.config_manager.get("streaming", {}).get("cookie_file")
             or self.config_manager.get("streaming", {}).get("mode_2_yt_relay", {}).get("cookie_file")
