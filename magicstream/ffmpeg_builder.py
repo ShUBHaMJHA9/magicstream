@@ -447,6 +447,11 @@ class FFmpegBuilder:
             next_input_idx += 1
 
         if has_banner:
+            # Automatically prefer pre-rendered PNG over SVG for 10x faster real-time encoding
+            if banner_path.endswith(".svg"):
+                png_candidate = banner_path[:-4] + ".png"
+                if os.path.exists(png_candidate):
+                    banner_path = png_candidate
             cmd.extend(["-stream_loop", "-1", "-i", banner_path])
             banner_idx = next_input_idx
             next_input_idx += 1

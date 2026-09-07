@@ -43,6 +43,8 @@ class NewsStory:
     source: str
     category: str = "BREAKING NEWS"
     published: str = ""
+    image_url: str = ""
+    topic: str = "breaking"
     clean_headline: str = ""
 
     def __post_init__(self):
@@ -54,6 +56,23 @@ class NewsStory:
             if not self.source or self.source == "Google News":
                 self.source = parts[1].strip()
         self.clean_headline = clean
+
+        # Infer topic for visual telemetry plate
+        c_low = (clean + " " + self.category).lower()
+        if any(w in c_low for w in ["military", "war", "army", "navy", "tanker", "missile", "strike", "ship", "troops", "drone", "weapon"]):
+            self.topic = "military"
+        elif any(w in c_low for w in ["putin", "trump", "biden", "zelensky", "talks", "peace", "summit", "envoy", "diplomacy", "treaty"]):
+            self.topic = "diplomacy"
+        elif any(w in c_low for w in ["court", "trial", "judge", "election", "vote", "congress", "senate", "parliament", "gop", "democrat"]):
+            self.topic = "politics"
+        elif any(w in c_low for w in ["ai", "tech", "apple", "google", "meta", "nvidia", "cyber", "chip", "software", "robot"]):
+            self.topic = "technology"
+        elif any(w in c_low for w in ["market", "bank", "inflation", "economy", "trade", "dollar", "stock", "fed", "tariff", "rate"]):
+            self.topic = "economy"
+        elif any(w in c_low for w in ["india", "delhi", "mumbai", "modi", "bjp"]):
+            self.topic = "india"
+        else:
+            self.topic = "breaking"
 
 
 class NewsFetcher:
@@ -98,11 +117,27 @@ class NewsFetcher:
                     pub_elem = item.find("pubDate")
                     pub_str = pub_elem.text.strip() if pub_elem is not None and pub_elem.text else ""
 
+                    # Extract story photo URL from RSS media tags or description HTML
+                    img_url = ""
+                    for child in item:
+                        tag = child.tag.lower()
+                        if "thumbnail" in tag or "content" in tag or "enclosure" in tag:
+                            url = child.attrib.get("url")
+                            if url and any(ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp", "image"]):
+                                img_url = url
+                                break
+                    if not img_url:
+                        desc_text = item.findtext("description") or ""
+                        m = re.search(r'<img[^>]+src=[\"\']([^\"\'>]+)', desc_text)
+                        if m:
+                            img_url = m.group(1)
+
                     story = NewsStory(
                         title=raw_title,
                         source=source_name,
                         category=cat.upper() + " NEWS" if cat != "world" else "BREAKING NEWS",
-                        published=pub_str
+                        published=pub_str,
+                        image_url=img_url
                     )
                     stories.append(story)
 
@@ -180,28 +215,57 @@ class NewsBroadcastStudio:
         if not ticker_items:
             ticker_items = [s.clean_headline for s in stories[:4]]
 
-        # 1. Generate Authentic TV Broadcast Lower-Third & OTS Media Window Overlay
+        # 1. Resolve & Download Real News Story Photograph (with Category Fallback)
+        story_photo_path = "overlay/current_story_photo.jpg"
+        photo_resolved = False
+
+        if active_story.image_url:
+            try:
+                headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
+                req = urllib.request.Request(active_story.image_url, headers=headers)
+                with urllib.request.urlopen(req, timeout=3.0) as resp:
+                    p_data = resp.read()
+                    if len(p_data) > 1000:
+                        with open(story_photo_path, "wb") as pf:
+                            pf.write(p_data)
+                        photo_resolved = True
+            except Exception:
+                photo_resolved = False
+
+        if not photo_resolved:
+            topic_plate = f"overlay/topics/{active_story.topic}.jpg"
+            if os.path.exists(topic_plate):
+                story_photo_path = topic_plate
+            else:
+                story_photo_path = "overlay/topics/breaking.jpg"
+
+        # 2. Generate Authentic TV Broadcast Lower-Third & OTS Media Window Overlay
         OverlayGenerator.generate_news_lower_third(
             headline=active_story.clean_headline,
             category=active_story.category,
             source=active_story.source,
             ticker_items=ticker_items,
+            image_path=story_photo_path,
+            topic=active_story.topic,
             output_path=output_svg_path
         )
 
-        # 2. Generate Audio Speech Bulletin (if TTS enabled)
+        # 2. Generate Audio Speech Bulletin with Studio-Grade Neural Broadcast Voices
         raw_audio_file = output_audio_path
-        if self.tts_enabled and HAS_GTTS:
-            try:
-                os.makedirs(os.path.dirname(output_audio_path) or ".", exist_ok=True)
-                speech_text = (
-                    f"Breaking News from {active_story.source}. "
-                    f"{active_story.clean_headline}. "
-                    f"Updates continue live on MagicStream Studio."
-                )
-                tts = gTTS(speech_text, lang=self.language, slow=False)
-                tts.save(output_audio_path)
-            except Exception:
+        if self.tts_enabled:
+            speech_text = (
+                f"Breaking News from {active_story.source}. "
+                f"{active_story.clean_headline}. "
+                f"Updates continue live on MagicStream Studio."
+            )
+            success = self.anchor_engine.generate_speech(
+                text=speech_text,
+                output_path=output_audio_path,
+                category=self.category,
+                language=self.language,
+                rate="+6%"
+            )
+            if not success or not os.path.exists(output_audio_path):
                 raw_audio_file = "audio/news_ambient.aac"
         else:
             raw_audio_file = "audio/news_ambient.aac"
@@ -214,15 +278,21 @@ class NewsBroadcastStudio:
             ambient_volume=0.16
         )
 
-        # 4. Generate AI Anchorwoman Video with Speech-Driven Lip-Sync
+        # 4. Generate AI Anchorwoman Video with Speech-Driven Lip-Sync & Embedded TV Graphics
         final_video_path = output_video_path
+        has_embedded_overlay = False
+        png_overlay_path = output_svg_path[:-4] + ".png" if output_svg_path.endswith(".svg") else output_svg_path
+        overlay_to_embed = png_overlay_path if os.path.exists(png_overlay_path) else None
+
         if self.ai_anchor_enabled and os.path.exists(final_audio_path):
             try:
                 final_video_path = self.lipsync_engine.generate_synced_video(
                     audio_path=final_audio_path,
                     output_video_path=output_video_path,
+                    overlay_path=overlay_to_embed,
                     video_bitrate="2500k"
                 )
+                has_embedded_overlay = (overlay_to_embed is not None)
             except Exception:
                 final_video_path = "video/anchor_speaking_loop.mp4"
                 if not os.path.exists(final_video_path):
@@ -234,6 +304,8 @@ class NewsBroadcastStudio:
             "source": active_story.source,
             "category": active_story.category,
             "svg_path": output_svg_path,
+            "png_path": png_overlay_path,
+            "has_embedded_overlay": has_embedded_overlay,
             "audio_path": final_audio_path,
             "video_path": final_video_path,
             "stinger_video": self.anchor_engine.get_stinger_clip(),

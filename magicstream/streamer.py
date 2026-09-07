@@ -213,6 +213,7 @@ class LiveStreamManager:
         self.start_time = time.time()
         self.retry_count = 0
         self.lag_counter = 0
+        self.last_error_summary = None
 
         self.stream_thread = threading.Thread(target=self._run_loop, daemon=True)
         self.stream_thread.start()
@@ -760,17 +761,20 @@ class LiveStreamManager:
                 video_path = bulletin["video_path"]
                 audio_path = bulletin["audio_path"]
                 svg_path = bulletin["svg_path"]
+                has_embedded_overlay = bulletin.get("has_embedded_overlay", False)
+                banner_to_use = None if has_embedded_overlay else (bulletin.get("png_path") or svg_path)
 
                 self.current_media_title = f"[BREAKING NEWS] {headline} ({source})"
                 self.current_track_index = bulletin["story_index"]
                 self.total_tracks = bulletin["total_stories"]
+                self.last_error_summary = None
                 self.log(f"📺 Broadcasting AI Anchor Live: '{headline}' • Source: {source}")
 
                 cmd = self.ffmpeg_builder.build_news_command(
                     video_path=video_path,
                     audio_path=audio_path,
                     destination_url=destination_url,
-                    banner_path=svg_path,
+                    banner_path=banner_to_use,
                     profile_override=self.active_profile_name,
                 )
                 self._segment_transitioning = True

@@ -10,7 +10,7 @@ and hard-of-hearing viewers on 24/7 TV live news broadcasts.
 
 import os
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 from typing import List, Tuple, Optional
 
 
@@ -23,7 +23,7 @@ class SignLanguageEngine:
     def __init__(
         self,
         gesture_paths: Optional[List[str]] = None,
-        pip_box: Tuple[int, int, int, int] = (990, 365, 1240, 525),
+        pip_box: Tuple[int, int, int, int] = (980, 360, 1240, 520),
     ):
         if gesture_paths is None:
             self.gesture_paths = [
@@ -38,27 +38,38 @@ class SignLanguageEngine:
         self._cached_gestures: Optional[List[Image.Image]] = None
 
     def load_gestures(self) -> List[Image.Image]:
-        """Loads and pre-resizes sign interpreter frames to the PIP box dimensions."""
+        """Loads and crops sign interpreter frames with aspect-ratio preservation."""
         if self._cached_gestures is not None:
             return self._cached_gestures
 
         w = self.pip_box[2] - self.pip_box[0]
         h = self.pip_box[3] - self.pip_box[1]
 
-        frames = []
+        base_frames = []
         for path in self.gesture_paths:
             if os.path.exists(path):
                 img = Image.open(path).convert("RGB")
-                # Crop and resize to fill the PIP box
-                img_resized = img.resize((w, h), Image.Resampling.LANCZOS)
-                frames.append(img_resized)
+                # Use ImageOps.fit to preserve 1:1 human proportions without squashing
+                fitted = ImageOps.fit(img, (w, h), method=Image.Resampling.LANCZOS, centering=(0.5, 0.42))
+                base_frames.append(fitted)
 
-        if not frames:
-            # Fallback placeholder if gesture images are not available
+        if not base_frames:
             blank = Image.new("RGB", (w, h), (15, 23, 42))
-            frames = [blank]
+            base_frames = [blank]
 
-        self._cached_gestures = frames
+        # Expand with smooth in-between transition blends
+        if len(base_frames) >= 3:
+            g0 = base_frames[0]
+            g1 = base_frames[1]
+            g2 = base_frames[2]
+            # Smooth in-between frames
+            g01 = Image.blend(g0, g1, 0.5)
+            g12 = Image.blend(g1, g2, 0.5)
+            g20 = Image.blend(g2, g0, 0.5)
+            self._cached_gestures = [g0, g01, g1, g12, g2, g20]
+        else:
+            self._cached_gestures = base_frames
+
         return self._cached_gestures
 
     def get_gesture_for_frame(self, frame_idx: int, fps: int = 25, is_speaking: bool = True) -> Image.Image:

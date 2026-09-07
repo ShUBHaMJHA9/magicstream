@@ -9,7 +9,9 @@ Generates broadcast-grade on-screen SVG graphics on the fly:
 2. CNN / BBC style "BREAKING NEWS" lower-third banners & scrolling tickers.
 """
 
+import base64
 import os
+import subprocess
 import time
 import xml.sax.saxutils as saxutils
 from typing import List, Optional
@@ -115,11 +117,13 @@ class OverlayGenerator:
         category: str = "BREAKING NEWS",
         source: str = "Live Wire",
         ticker_items: Optional[List[str]] = None,
+        image_path: Optional[str] = None,
+        topic: str = "breaking",
         output_path: str = "overlay/breaking_news.svg"
     ) -> str:
         """
         Generates an authentic TV broadcast graphics layer (1280x720):
-        - Top-Right: Over-The-Shoulder (OTS) News Media Window with source badge & topic graphic
+        - Top-Right: Over-The-Shoulder (OTS) News Media Window with real story photograph & verified publisher
         - Bottom: Multi-tier 3D angled Breaking News lower-third with clock, city bug, and live ticker
         - Left: Open broadcast window for the AI Anchorwoman
         """
@@ -131,13 +135,38 @@ class OverlayGenerator:
 
         safe_cat = escape_xml(category.upper() if category else "BREAKING NEWS")
         safe_source = escape_xml(source.upper() if source else "GLOBAL WIRE")
+        safe_topic = escape_xml(topic.upper() if topic else "BREAKING")
 
-        # Format 2-line wrapped text for the OTS media window
-        ots_words = safe_headline.split(" ")
-        ots_line1 = " ".join(ots_words[:6])
-        ots_line2 = " ".join(ots_words[6:12])
-        if len(ots_words) > 12:
-            ots_line2 += "..."
+        # Encode news photo to base64 for self-contained SVG & PNG rendering
+        b64_photo = ""
+        resolved_img = image_path if image_path and os.path.exists(image_path) else "overlay/current_story_photo.jpg"
+        if resolved_img and os.path.exists(resolved_img):
+            try:
+                with open(resolved_img, "rb") as f_img:
+                    b64_photo = base64.b64encode(f_img.read()).decode("ascii")
+            except Exception:
+                b64_photo = ""
+
+        # Map publisher to authentic TV brand color
+        src_upper = safe_source.upper()
+        if "BBC" in src_upper:
+            source_bg = "#bb1919"
+        elif "WASHINGTON POST" in src_upper:
+            source_bg = "#0f172a"
+        elif "REUTERS" in src_upper:
+            source_bg = "#ea580c"
+        elif "AL JAZEERA" in src_upper:
+            source_bg = "#c2410c"
+        elif "CNN" in src_upper:
+            source_bg = "#b91c1c"
+        elif "FOX" in src_upper:
+            source_bg = "#1e3a8a"
+        elif "NDTV" in src_upper:
+            source_bg = "#991b1b"
+        elif "TIMES OF INDIA" in src_upper:
+            source_bg = "#b45309"
+        else:
+            source_bg = "#0369a1"
 
         if ticker_items:
             safe_ticker = "   ✦   ".join(escape_xml(t) for t in ticker_items[:5])
@@ -150,8 +179,34 @@ class OverlayGenerator:
         # Live clock time string e.g. "16:20 IST"
         time_str = time.strftime("%H:%M") + " IST"
 
+        # Construct photo SVG block or fallback radar
+        if b64_photo:
+            photo_block = f"""
+    <!-- REAL NEWS STORY PHOTOGRAPH -->
+    <image href="data:image/jpeg;base64,{b64_photo}" x="20" y="38" width="230" height="130" preserveAspectRatio="xMidYMid slice" clip-path="url(#otsPhotoClip)"/>
+    <rect x="20" y="38" width="230" height="130" rx="8" fill="none" stroke="#00f0ff" stroke-width="1.8"/>
+    <!-- Top-Left Badge on Photo -->
+    <rect x="26" y="44" width="94" height="18" rx="3" fill="#ef4444"/>
+    <circle cx="34" cy="53" r="3" fill="#ffffff"/>
+    <text x="74" y="56" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="9" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">LIVE PHOTO</text>
+"""
+        else:
+            photo_block = f"""
+    <!-- FALLBACK SATELLITE WIRE RADAR -->
+    <rect x="20" y="38" width="230" height="130" rx="8" fill="#0a1424" stroke="#00f0ff" stroke-width="1.5"/>
+    <circle cx="135" cy="103" r="42" fill="none" stroke="#00f0ff" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+    <circle cx="135" cy="103" r="24" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity="0.6"/>
+    <text x="135" y="108" font-size="20" text-anchor="middle" fill="#38bdf8">🌐</text>
+    <text x="135" y="152" font-family="'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#38bdf8" text-anchor="middle">SATELLITE INTEL WIRE</text>
+"""
+
         svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
   <defs>
+    <!-- Photo Clip Path -->
+    <clipPath id="otsPhotoClip">
+      <rect x="20" y="38" width="230" height="130" rx="8" ry="8"/>
+    </clipPath>
+
     <!-- Gradients -->
     <linearGradient id="breakingRed" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#991b1b"/>
@@ -199,7 +254,7 @@ class OverlayGenerator:
     <path d="M 12 306 L 4 306 L 4 298" stroke="#00f0ff" stroke-width="3" fill="none"/>
     <path d="M 498 306 L 506 306 L 506 298" stroke="#00f0ff" stroke-width="3" fill="none"/>
 
-    <!-- Top Tab: Category & Satellite Telemetry -->
+    <!-- Top Tab: Category Ribbon -->
     <path d="M 0 0 L 260 0 L 235 30 L 0 30 Z" fill="url(#breakingRed)"/>
     <circle cx="20" cy="15" r="4.5" fill="#ffffff" filter="url(#glowRed)"/>
     <text x="34" y="20" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="11" font-weight="900" fill="#ffffff" letter-spacing="1.5">
@@ -212,76 +267,56 @@ class OverlayGenerator:
       📡 LIVE VIDEO RELAY
     </text>
 
-    <!-- MULTI-IMAGE / TELEMETRY GRID -->
-    <!-- Grid Box 1: Visual Radar / Global Wire -->
-    <rect x="20" y="38" width="220" height="92" rx="8" fill="#0a1424" stroke="#1e293b" stroke-width="1"/>
-    <circle cx="50" cy="84" r="28" fill="none" stroke="#00f0ff" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
-    <circle cx="50" cy="84" r="16" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity="0.6"/>
-    <text x="50" y="90" font-size="16" text-anchor="middle" fill="#38bdf8">🌐</text>
-    <text x="88" y="70" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="11" font-weight="800" fill="#38bdf8">
-      GLOBAL WIRE
+    <!-- LEFT: REAL STORY PHOTOGRAPH / MEDIA FRAME -->
+    {photo_block}
+
+    <!-- RIGHT: VERIFIED PUBLISHER BRANDING & TELEMETRY -->
+    <rect x="260" y="38" width="230" height="34" rx="6" fill="{source_bg}" stroke="#334155" stroke-width="1"/>
+    <text x="272" y="60" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="12" font-weight="900" fill="#ffffff" letter-spacing="0.5">
+      ⚡ {safe_source[:20]}
     </text>
-    <text x="88" y="86" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="9" font-weight="600" fill="#94a3b8">
+
+    <!-- Telemetry Intel Box -->
+    <rect x="260" y="78" width="230" height="90" rx="6" fill="#0a1424" stroke="#1e293b" stroke-width="1"/>
+    <circle cx="274" cy="98" r="3.5" fill="#38bdf8"/>
+    <text x="286" y="102" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="10" font-weight="700" fill="#38bdf8">
       1080p Satellite Feed
     </text>
-    <text x="88" y="100" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="9" font-weight="700" fill="#22c55e">
-      ● ENCRYPTED LIVE
+    <circle cx="274" cy="122" r="3.5" fill="#22c55e"/>
+    <text x="286" y="126" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="10" font-weight="800" fill="#22c55e">
+      ● VERIFIED BROADCAST WIRE
     </text>
-
-    <!-- Grid Box 2: Editorial Topic Intel -->
-    <rect x="250" y="38" width="240" height="92" rx="8" fill="#0a1424" stroke="#1e293b" stroke-width="1"/>
-    <rect x="260" y="48" width="70" height="18" rx="4" fill="#991b1b"/>
-    <text x="295" y="61" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="9" font-weight="900" fill="#ffffff" text-anchor="middle">
-      HOT TOPIC
-    </text>
-    <text x="260" y="82" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#ffffff">
-      {ots_line1}
-    </text>
-    <text x="260" y="98" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="10" font-weight="600" fill="#cbd5e1">
-      {ots_line2}
-    </text>
-
-    <!-- Headline Summary Text -->
-    <text x="20" y="152" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="16" font-weight="800" fill="#ffffff">
-      {safe_headline}
+    <circle cx="274" cy="146" r="3.5" fill="#fbbf24"/>
+    <text x="286" y="150" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="10" font-weight="800" fill="#cbd5e1">
+      TOPIC: {safe_topic[:18]}
     </text>
 
     <!-- Divider Line -->
-    <line x1="20" y1="172" x2="490" y2="172" stroke="#334155" stroke-width="1.2"/>
+    <line x1="20" y1="178" x2="490" y2="178" stroke="#334155" stroke-width="1.2"/>
 
-    <!-- Verified News Wire Key Intel Bullets -->
-    <g transform="translate(20, 192)">
-      <circle cx="6" cy="-4" r="3" fill="#fbbf24"/>
-      <text x="18" y="0" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#e2e8f0">
-        Live Broadcast Wire: {safe_source}
-      </text>
-
-      <circle cx="6" cy="18" r="3" fill="#00f0ff"/>
-      <text x="18" y="22" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#e2e8f0">
-        Round-the-Clock AI Studio Verification
-      </text>
-
-      <circle cx="6" cy="40" r="3" fill="#22c55e"/>
-      <text x="18" y="44" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#cbd5e1">
-        High-Definition Multi-Platform Streaming Feed
-      </text>
-    </g>
+    <!-- Headline Summary Text in OTS Frame -->
+    <text x="20" y="200" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="14" font-weight="800" fill="#ffffff">
+      {safe_headline[:58]}
+    </text>
+    <text x="20" y="218" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="12" font-weight="600" fill="#94a3b8">
+      Continuous 24/7 Coverage Across All Global Telemetry Points
+    </text>
 
     <!-- Source Attribution Bottom Bar with CC Legal Notice -->
-    <rect x="0" y="255" width="510" height="55" rx="0" ry="0" fill="#060c16"/>
-    <rect x="0" y="253" width="510" height="2" fill="url(#goldAccent)"/>
+    <rect x="0" y="235" width="510" height="75" rx="0" ry="0" fill="#060c16"/>
+    <rect x="0" y="233" width="510" height="2" fill="url(#goldAccent)"/>
     
     <!-- Source Row -->
-    <text x="20" y="275" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="11" font-weight="900" fill="#fbbf24" letter-spacing="1">
-      ⚡ SOURCE:
-    </text>
-    <text x="85" y="275" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#38bdf8">
-      {safe_source}
+    <text x="20" y="258" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="11" font-weight="900" fill="#fbbf24" letter-spacing="1">
+      ⚡ SOURCE: <tspan fill="#38bdf8" font-weight="800">{safe_source}</tspan>
     </text>
 
     <!-- Creative Commons & Legal Protection Notice -->
-    <text x="20" y="296" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="9" font-weight="700" fill="#64748b" letter-spacing="0.4">
-      ⚖️ FAIR USE / EDITORIAL NEWS REPORTING • CC-BY 4.0 (SEC 107 U.S. &amp; SEC 52(1)(a) INDIAN COPYRIGHT ACT)
+    <text x="20" y="278" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="9" font-weight="700" fill="#64748b" letter-spacing="0.4">
+      ⚖️ FAIR USE / EDITORIAL NEWS REPORTING • CC-BY 4.0
+    </text>
+    <text x="20" y="294" font-family="'Segoe UI', Roboto, Helvetica, sans-serif" font-size="8.5" font-weight="700" fill="#475569" letter-spacing="0.4">
+      (SEC 107 U.S. COPYRIGHT ACT &amp; SEC 52(1)(a) INDIAN COPYRIGHT ACT)
     </text>
   </g>
 
@@ -337,5 +372,19 @@ class OverlayGenerator:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(svg)
 
+        # Pre-render SVG to transparent PNG for high-performance zero-lag compositing
+        if output_path.endswith(".svg"):
+            png_path = output_path[:-4] + ".png"
+            try:
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", output_path, png_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5
+                )
+            except Exception:
+                pass
+
         return output_path
+
 

@@ -8,11 +8,24 @@ Orchestrates AI news anchor animation, talking viseme cycles, broadcast audio
 mixing (voice EQ + ambient TV news music bed), and ABP News-style stinger alerts.
 """
 
+import asyncio
 import os
 import re
 import subprocess
 import time
 from typing import Optional, Dict, Any
+
+try:
+    import edge_tts
+    HAS_EDGE_TTS = True
+except ImportError:
+    HAS_EDGE_TTS = False
+
+try:
+    from gtts import gTTS
+    HAS_GTTS = True
+except ImportError:
+    HAS_GTTS = False
 
 
 class AnchorEngine:
@@ -119,3 +132,61 @@ class AnchorEngine:
         if os.path.exists(self.stinger_video):
             return self.stinger_video
         return None
+
+    @classmethod
+    def resolve_voice_for_category(cls, category: str, language: str = "en") -> str:
+        """Picks the authentic TV newsroom broadcast neural voice for the category."""
+        c = (category or "").lower().strip()
+        lang = (language or "en").lower().strip()
+
+        if lang.startswith("hi"):
+            return "hi-IN-SwaraNeural"  # Authentic Hindi TV Anchor
+
+        if "india" in c:
+            return "en-IN-NeerjaNeural"  # Indian TV Broadcast Anchor (ABP/NDTV style)
+        elif "bbc" in c:
+            return "en-GB-SoniaNeural"   # BBC World News Broadcast Anchor
+        else:
+            return "en-US-AriaNeural"    # US Authoritative Breaking News Anchor
+
+    @classmethod
+    def generate_speech(
+        cls,
+        text: str,
+        output_path: str = "audio/news_bulletin.mp3",
+        category: str = "world",
+        language: str = "en",
+        rate: str = "+6%"
+    ) -> bool:
+        """
+        Generates realistic, studio-grade broadcast news speech using Edge TTS neural voices,
+        with automatic fallback to gTTS.
+        """
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        voice = cls.resolve_voice_for_category(category, language)
+
+        # 1. Try Microsoft Edge Neural Voice (Broadcast Studio Quality)
+        if HAS_EDGE_TTS:
+            try:
+                async def _synthesize():
+                    comm = edge_tts.Communicate(text=text, voice=voice, rate=rate)
+                    await comm.save(output_path)
+
+                asyncio.run(_synthesize())
+                if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+                    return True
+            except Exception:
+                pass
+
+        # 2. Fallback to gTTS if offline or Edge TTS encounters network issue
+        if HAS_GTTS:
+            try:
+                gtts_lang = "hi" if language.startswith("hi") else "en"
+                tts = gTTS(text=text, lang=gtts_lang, slow=False)
+                tts.save(output_path)
+                return os.path.exists(output_path) and os.path.getsize(output_path) > 1000
+            except Exception:
+                pass
+
+        return False
+
