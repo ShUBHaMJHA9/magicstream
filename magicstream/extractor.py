@@ -161,18 +161,18 @@ class MediaExtractor:
         return self._title_cache.get(url, os.path.basename(url))
 
     def _get_ydl_options(self, audio_only: bool = False, quality: str = "best", client_list: Optional[List[str]] = None) -> Dict[str, Any]:
-        """Build yt-dlp extraction options with cookie support and mobile client bypasses."""
+        """Build yt-dlp extraction options with cookie support, robust format fallbacks, and mobile client bypasses."""
         if audio_only:
-            format_spec = "bestaudio/best/18"
+            format_spec = "ba/ba*/bestaudio/best/18"
         else:
             if quality == "1080p":
-                format_spec = "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18"
+                format_spec = "bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b/18/best"
             elif quality == "720p":
-                format_spec = "bestvideo[height<=720]+bestaudio/best[height<=720]/best/18"
-            elif quality == "480p":
-                format_spec = "bestvideo[height<=480]+bestaudio/best[height<=480]/best/18"
+                format_spec = "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b/18/best"
+            elif quality in ("480p", "low"):
+                format_spec = "bv*[height<=480]+ba/b[height<=480]/bv*+ba/b/18/best"
             else:
-                format_spec = "bestvideo+bestaudio/best/18"
+                format_spec = "bv*+ba/b/18/best"
 
         opts: Dict[str, Any] = {
             "format": format_spec,
@@ -305,8 +305,10 @@ class MediaExtractor:
             ["web", "mweb"],
         ]
 
-        for clients in client_tiers:
-            opts = self._get_ydl_options(audio_only=False, quality=quality, client_list=clients)
+        attempts = [(clients, quality) for clients in client_tiers] + [(["android"], "best"), (["android", "web"], "best")]
+
+        for clients, q in attempts:
+            opts = self._get_ydl_options(audio_only=False, quality=q, client_list=clients)
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     info = ydl.extract_info(url, download=False)
